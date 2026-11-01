@@ -1,7 +1,7 @@
 {
   "meta": {
     "definition": "Organisations with an address in the country that are designated under Russia- or Belarus-related programmes (EU: UKR, RUSDA, BLR; US OFAC: RUSSIA-EO14024, UKRAINE-EO13660/1/2/85, CAATSA-RUSSIA, BELARUS).",
-    "retrieved": "2026-10-16"
+    "retrieved": "2026-11-01"
   },
   "russia_designations": {
     "KZ": 12,

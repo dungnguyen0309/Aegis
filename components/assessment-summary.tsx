@@ -1,11 +1,11 @@
 "use client";
 
-import { CaretRightIcon, ChartLineIcon, CheckIcon, FileTextIcon, LinkSimpleIcon, MapTrifoldIcon, PackageIcon, UserFocusIcon } from "@phosphor-icons/react";
-import { useState, type KeyboardEvent, type ReactNode } from "react";
+import { CaretRightIcon, ChartLineIcon, CheckIcon, FileTextIcon, LinkSimpleIcon, MapTrifoldIcon, PackageIcon, PencilSimpleIcon, UserFocusIcon } from "@phosphor-icons/react";
+import { useEffect, useState, type KeyboardEvent, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/status";
 import { CompanyMark, Flag, regionName } from "@/components/visuals";
-import { bandTone, entityTone, type Tone, toneVar, times, verdictSolid, verdictTone } from "@/lib/format";
+import { entityLabel, entityTone, type Tone, toneVar, times, verdictSolid, verdictTone, routeStatus } from "@/lib/format";
 import type { Assessment } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -58,19 +58,35 @@ function CopyLink() {
 }
 
 /** The recommended action as the headline, who and what was assessed, and the four figures behind it. */
-export function AssessmentSummary({ a, onSection, listsDate }: { a: Assessment; onSection: (s: Section) => void; listsDate?: string }) {
+export function AssessmentSummary({ a, onSection, listsDate, example }: {
+  a: Assessment; onSection: (s: Section) => void; listsDate?: string; example?: boolean;
+}) {
   const { query: q, classification: c, route: r, entity: e } = a;
   const tone = verdictTone[a.verdict.code];
   const best = e.subjects.flatMap((s) => s.matches).sort((x, y) => y.score - x.score)[0];
   const ytd = a.monthly?.ytd;
+  const rs = routeStatus(r.band, r.no_baseline);
+  // Cleared, then set: a rerun with the same company and verdict is announced again
+  const [said, setSaid] = useState("");
+  useEffect(() => {
+    const text = `${q.company}: ${a.verdict.title}.`;
+    const clear = setTimeout(() => setSaid(""), 0);
+    const say = setTimeout(() => setSaid(text), 150);
+    return () => { clearTimeout(clear); clearTimeout(say); };
+  }, [a, q.company]);
 
   return (
-    <section data-tour="verdict" className="border border-border bg-card" aria-live="polite">
+    <section data-tour="verdict" className="border border-border bg-card">
+      {/* Screen readers hear the decision once per result, not the whole card */}
+      <p className="sr-only" aria-live="polite">{said}</p>
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1 px-5 pt-4">
         <div className="flex min-w-0 items-start gap-3">
           <CompanyMark name={q.company} size={36} flagged={e.status !== "CLEAN"} />
           <div className="min-w-0">
-            <h1 className="text-[17px] font-bold leading-tight">{q.company}</h1>
+            <h1 className="flex flex-wrap items-center gap-x-2 text-[17px] font-bold leading-tight">
+              {q.company}
+              {example && <span className="border border-border px-1.5 text-[12px] font-normal text-muted-foreground">Example</span>}
+            </h1>
             <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[13px] text-muted-foreground">
               {q.jurisdiction && <><Flag code={q.jurisdiction} size={14} /> {regionName(q.jurisdiction)} <span className="text-faint">·</span></>}
               <span>HS {c.hs.slice(0, 4)}.{c.hs.slice(4)}{c.description && ` ${c.description}`}</span>
@@ -82,15 +98,27 @@ export function AssessmentSummary({ a, onSection, listsDate }: { a: Assessment; 
             </div>
           </div>
         </div>
-        <CopyLink />
+        <div className="flex items-center gap-1">
+          {/* Below lg the form sits under the results: jump to it */}
+          <Button variant="ghost" size="sm" className="lg:hidden" onClick={() => {
+            document.querySelector('[data-tour="query"]')?.scrollIntoView({ behavior: "smooth", block: "start" });
+            document.getElementById("company")?.focus({ preventScroll: true });
+          }}><PencilSimpleIcon /> New assessment</Button>
+          <CopyLink />
+        </div>
       </div>
 
       <div className="px-5 pb-4 pt-4">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
           <span className="sr-only">Recommended action:</span>
           <StatusBadge tone={tone} solid={verdictSolid(a.verdict.code)} large>{a.verdict.code}</StatusBadge>
-          <p className="text-[22px] font-bold leading-tight sm:text-[26px]">{a.verdict.title}</p>
+          <h2 className="text-[22px] font-bold leading-tight sm:text-[26px]">{a.verdict.title}</h2>
         </div>
+        {a.verdict.actions.length > 0 && (
+          <ol className="mt-3 list-decimal space-y-0.5 pl-5 text-[15px] font-semibold">
+            {a.verdict.actions.map((s) => <li key={s}>{s}</li>)}
+          </ol>
+        )}
         {a.verdict.notes.length > 0 && (
           <ul className="mt-2 space-y-0.5 text-[14px] text-muted-foreground">
             {a.verdict.notes.map((n) => <li key={n}>{n}</li>)}
@@ -100,20 +128,20 @@ export function AssessmentSummary({ a, onSection, listsDate }: { a: Assessment; 
           {listsDate && <span>Sanctions lists checked {listsDate}</span>}
           <button type="button" onClick={() => onSection("briefing")}
             className="font-semibold text-foreground underline decoration-border underline-offset-4 hover:decoration-foreground">
-            Due-diligence steps in the briefing
+            {a.verdict.actions.length > 0 ? "Full briefing" : "Due-diligence steps in the briefing"}
           </button>
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-px border-t border-border bg-border lg:grid-cols-4">
         <Kpi label="Sanctions screening" onClick={() => onSection("counterparty")}
-          value={<StatusBadge tone={entityTone[e.status]}>{e.status === "CLEAN" ? "No match" : e.status}</StatusBadge>}
+          value={<StatusBadge tone={entityTone[e.status]}>{entityLabel[e.status]}</StatusBadge>}
           sub={best && e.status !== "CLEAN"
             ? `${best.name} · ${best.lists.join(", ")} · ${best.score.toFixed(0)}%`
             : `${e.subjects.length} name${e.subjects.length > 1 ? "s" : ""} checked against EU, US and UN lists`} />
         <Kpi label="Route risk" onClick={() => onSection("route")}
           value={<><span className="text-xl font-bold leading-none tabular">{r.score}</span><span className="text-muted-foreground">/ 100</span>
-            <StatusBadge tone={bandTone[r.band]}>{r.band}</StatusBadge></>}
+            <StatusBadge tone={rs.tone}>{rs.label}</StatusBadge></>}
           sub={`${q.exporter_name} → ${q.intermediary_name} for this item`} />
         <Kpi label="Item" onClick={() => onSection("goods")}
           value={<StatusBadge tone={itemTone(a)}>{c.chpl ? `Tier ${c.tier}` : c.status}</StatusBadge>}
@@ -141,7 +169,7 @@ export function SectionTabs({ value, onChange, a }: { value: Section; onChange: 
   const dot: Partial<Record<Section, Tone>> = {
     counterparty: entityTone[a.entity.status],
     goods: itemTone(a),
-    route: bandTone[a.route.band],
+    route: routeStatus(a.route.band, a.route.no_baseline).tone,
   };
   const onKey = (e: KeyboardEvent<HTMLDivElement>) => {
     const i = SECTIONS.findIndex((x) => x.id === value);

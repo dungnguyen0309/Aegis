@@ -58,6 +58,7 @@
   --muted: #f4f5f7;
   --muted-foreground: #5b616b;
   --faint-foreground: #6a707a;
+  --tour-dim: rgba(8, 10, 14, 0.58);
   --accent: #f3f4f6;
   --accent-foreground: #111318;
   --destructive: #c42b2b;
@@ -114,6 +115,7 @@
   --muted: #1b2028;
   --muted-foreground: #9aa2ad;
   --faint-foreground: #8a929e;
+  --tour-dim: rgba(0, 0, 0, 0.78);
   --accent: #1d232c;
   --accent-foreground: #e7e9ec;
   --destructive: #f07070;
@@ -198,6 +200,12 @@
   font-variant-numeric: lining-nums tabular-nums;
 }
 
+/* Fewer one-word last lines in running text */
+p,
+li {
+  text-wrap: pretty;
+}
+
 .memo-h {
   margin-bottom: 4px;
   border-bottom: 1px solid #d4d4d0;
@@ -227,4 +235,9 @@
   #memo-print {
     display: block;
   }
+}
+
+/* Phones and tablets: the sticky Run footer sits at the bottom of the screen; keep focused fields above it */
+@media (max-width: 1023px) {
+  html { scroll-padding-bottom: 7rem; }
 }

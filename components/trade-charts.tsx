@@ -67,8 +67,8 @@ export function AnomalyChart({ route, partner, unit }: { route: Route; partner: 
     <div>
       <div className="mb-3 flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-muted-foreground">
         <LegendKey color="var(--chart-baseline)" label={`${b0}–${String(b1).slice(2)} (baseline)`} />
-        <LegendKey color="var(--series-1)" label="Since 2022" />
-        <LegendKey color="var(--status-critical)" label={`Unusual year (over ${route.threshold} standard deviations)`} />
+        {data.some((d) => d.period !== "baseline" && !d.flagged) && <LegendKey color="var(--series-1)" label="Since 2022" />}
+        {data.some((d) => d.flagged) && <LegendKey color="var(--status-critical)" label={`Unusual year (over ${route.threshold} standard deviations)`} />}
         {hasBand && <LegendKey color="var(--muted-foreground)" label="Baseline average" line />}
         {hasBand && <LegendKey color="var(--status-warning)" label="Pre-war range" line />}
       </div>

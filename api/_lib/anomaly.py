@@ -161,6 +161,8 @@ def analyse(series: dict, classification: dict, partner: str,
         },
         "jurisdiction_profile": profile,
         "note": note,
+        # No usable pre-war series and no new flow either: the statistical components are missing, not low
+        "no_baseline": not has_baseline and not emergent,
         "threshold": config.Z_THRESHOLD,
     }
 

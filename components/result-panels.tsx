@@ -10,7 +10,7 @@ import { StatusBadge, ToneIcon, sentenceCase } from "@/components/status";
 import { CompanyMark, Flag } from "@/components/visuals";
 import { ProductArt } from "@/components/product-art";
 import { RegistryLookup } from "@/components/registry-lookup";
-import { bandTone, componentLabel, entityTone } from "@/lib/format";
+import { componentLabel, entityTone, entityLabel, SCREENING_RULE, routeStatus } from "@/lib/format";
 import type { Classification, Entity, Route, Weights } from "@/lib/types";
 
 export function LegalPanel({ c }: { c: Classification }) {
@@ -49,11 +49,11 @@ export function LegalPanel({ c }: { c: Classification }) {
   );
 }
 
-/** Name similarity with a bar: red at a match (93%+), orange for a partial match (80%+), grey below. */
+/** Name similarity with a bar: red at a match (93%+), orange for a possible match (80%+), grey below. */
 function SimilarityBar({ score }: { score: number }) {
   const tone = score >= 93 ? "var(--status-critical)" : score >= 80 ? "var(--status-serious)" : "var(--chart-baseline)";
   return (
-    <div className="flex items-center justify-end gap-2" title={score >= 93 ? "Match" : score >= 80 ? "Partial match" : "Weak similarity"}>
+    <div className="flex items-center justify-end gap-2" title={score >= 93 ? "Match" : score >= 80 ? "Possible match" : "Listed for review"}>
       <div className="h-1.5 w-16 rounded-full bg-muted">
         <div className="h-full rounded-full" style={{ width: `${Math.max(4, score)}%`, background: tone }} />
       </div>
@@ -64,7 +64,7 @@ function SimilarityBar({ score }: { score: number }) {
 
 export function EntityPanel({ e, company, jurisdiction }: { e: Entity; company: string; jurisdiction: string | null }) {
   return (
-    <Panel title="Sanctions screening" subtitle={`The buyer and its owners, checked against: ${e.lists.join(", ")}.`} tour="entity"
+    <Panel title="Sanctions screening" subtitle={`The buyer and its owners, checked against ${e.lists.join(", ")}. ${SCREENING_RULE}`} tour="entity"
       action={<span className="text-[12px] text-faint">{e.source}</span>}>
       <div className="space-y-4">
         {e.subjects.map((s) => (
@@ -79,7 +79,7 @@ export function EntityPanel({ e, company, jurisdiction }: { e: Entity; company: 
                 </div>
               </div>
               <StatusBadge tone={entityTone[s.status]}>
-                {s.status}{s.status !== "CLEAN" && ` · ${s.best_score.toFixed(0)}%`}
+                {entityLabel[s.status]}{s.status !== "CLEAN" && ` · ${s.best_score.toFixed(0)}%`}
               </StatusBadge>
             </div>
             {s.matches.length > 0 ? (
@@ -134,7 +134,7 @@ export function EntityPanel({ e, company, jurisdiction }: { e: Entity; company: 
               </Table>
             ) : (
               <p className="mt-1.5 text-[12px] text-muted-foreground">
-                No listed name above 70% similarity.
+                No listed name at 70% similarity or more.
               </p>
             )}
           </div>
@@ -211,16 +211,16 @@ export function ScoreBreakdown({ r, defaults, onWeights }: {
         <div className="flex items-center justify-between gap-2">
           <span className="text-muted-foreground">With equal weights</span>
           <span className="inline-flex items-center gap-1.5 font-mono tabular">
-            <ToneIcon tone={bandTone[sens.equal.band]} className="size-3.5" />
-            {sens.equal.score} {sentenceCase(sens.equal.band)}
+            <ToneIcon tone={routeStatus(sens.equal.band, r.no_baseline).tone} className="size-3.5" />
+            {sens.equal.score} {sentenceCase(routeStatus(sens.equal.band, r.no_baseline).label)}
           </span>
         </div>
         {r.custom_weights && (
           <div className="flex items-center justify-between gap-2">
             <span className="text-muted-foreground">Default weights</span>
             <span className="inline-flex items-center gap-1.5 font-mono tabular">
-              <ToneIcon tone={bandTone[sens.default.band]} className="size-3.5" />
-              {sens.default.score} {sentenceCase(sens.default.band)}
+              <ToneIcon tone={routeStatus(sens.default.band, r.no_baseline).tone} className="size-3.5" />
+              {sens.default.score} {sentenceCase(routeStatus(sens.default.band, r.no_baseline).label)}
             </span>
           </div>
         )}

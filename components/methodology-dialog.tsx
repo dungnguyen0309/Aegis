@@ -140,7 +140,7 @@ export function MethodologyDialog({ reference }: { reference: Reference | null }
               <b>Sanctions:</b> the official publications: EU Consolidated Financial Sanctions List, US OFAC SDN
               List and UN Security Council Consolidated List ({reference?.sanctions.entities.toLocaleString("en-US") ?? "—"}{" "}
               persons and organisations, snapshot {reference?.sanctions.retrieved ?? "—"}), straight from the publishers. Names are transliterated from Cyrillic, stripped of legal forms
-              (OOO, LLC, FZE…) and compared with Levenshtein similarity; ≥ 93% is a match, ≥ 80% a possible match.
+              (OOO, LLC, FZE…) and compared with Levenshtein similarity: a match from 93%, a possible match from 80%; names from 70% are listed for review.
               Shared generic words (&quot;trading&quot;, &quot;electronics&quot;) cannot carry a match on their own.
             </li>
             <li>

@@ -11,7 +11,7 @@ import { ProductArt } from "@/components/product-art";
 import { StatusBadge } from "@/components/status";
 import { CompanyMark, Flag } from "@/components/visuals";
 import { api } from "@/lib/api";
-import { bandTone, entityTone, verdictSolid, verdictTone } from "@/lib/format";
+import { entityLabel, entityTone, verdictSolid, verdictTone, routeStatus } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { BatchResult, BatchRowIn, BatchRowOut, VerdictCode } from "@/lib/types";
 
@@ -30,7 +30,7 @@ Kalashnikov Concern,RU,,`;
 function SanctionsCell({ r }: { r: BatchRowOut }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <StatusBadge tone={entityTone[r.entity_status]}>{r.entity_status === "CLEAN" ? "No match" : r.entity_status}</StatusBadge>
+      <StatusBadge tone={entityTone[r.entity_status]}>{entityLabel[r.entity_status]}</StatusBadge>
       {r.best_match && r.entity_status !== "CLEAN" && (
         <span className="text-muted-foreground">{r.best_match} · {r.best_lists.join(", ")} · {r.best_similarity?.toFixed(0)}%</span>
       )}
@@ -43,7 +43,7 @@ function ItemCell({ r }: { r: BatchRowOut }) {
     <div className="flex items-center gap-2">
       <ProductArt hs={r.hs} size={24} />
       <span className="tabular">{r.hs}</span>
-      <span className="text-muted-foreground">{r.chpl_tier ? `Tier ${r.chpl_tier}` : "not listed"}</span>
+      <span className="text-muted-foreground">{r.chpl_tier ? `Tier ${r.chpl_tier}` : "Not listed"}</span>
     </div>
   ) : <span className="text-faint">—</span>;
 }
@@ -52,7 +52,7 @@ function RouteCell({ r }: { r: BatchRowOut }) {
   return r.route_score !== null && r.route_band && r.intermediary ? (
     <div className="flex items-center gap-2">
       <Flag code={r.intermediary} size={14} />
-      <StatusBadge tone={bandTone[r.route_band]}>{r.route_score}</StatusBadge>
+      <StatusBadge tone={routeStatus(r.route_band, r.route_no_baseline).tone}>{`${r.route_score} ${routeStatus(r.route_band, r.route_no_baseline).label}`}</StatusBadge>
     </div>
   ) : <span className="text-faint">—</span>;
 }
@@ -87,13 +87,13 @@ function parseCsv(text: string): { rows: BatchRowIn[]; short: number; extra: num
 }
 
 function toCsv(result: BatchResult): string {
-  const head = ["verdict", "company", "country", "sanctions_status", "best_match", "lists", "similarity", "hs", "chpl_tier", "intermediary", "route_score", "route_band"];
+  const head = ["verdict", "company", "country", "sanctions_status", "best_match", "lists", "similarity", "hs", "chpl_tier", "intermediary", "route_score", "route_band", "route_no_baseline"];
   const esc = (v: unknown) => {
     const s = v === null || v === undefined ? "" : String(v);
     return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
   const lines = result.rows.map((r) => [r.verdict, r.company, r.country, r.entity_status, r.best_match, r.best_lists.join(" "),
-    r.best_similarity, r.hs, r.chpl_tier, r.intermediary, r.route_score, r.route_band].map(esc).join(","));
+    r.best_similarity, r.hs, r.chpl_tier, r.intermediary, r.route_score, r.route_band, r.route_no_baseline].map(esc).join(","));
   return [head.join(","), ...lines].join("\n");
 }
 
@@ -141,7 +141,7 @@ export function BatchView({ state, onState, onAssess }: {
   return (
     <div className="space-y-4">
       <PageHeader title="Batch screening"
-        description="Screen up to 200 counterparties against the EU, US and UN sanctions lists. Rows with an HS code and a route also get the item and route checks." />
+        description="Screen up to 200 counterparties against the EU, US and UN lists. Add an HS code and a route for the full check." />
 
       <Panel title="Counterparties" subtitle={<>CSV columns: <b>company</b> (required), country, hs, intermediary. Paste below or upload a file.</>}>
         <textarea value={text} onChange={(e) => setText(e.target.value)} rows={8} spellCheck={false}

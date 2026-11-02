@@ -84,8 +84,8 @@ export function Tour({ onClose, onSection }: { onClose: () => void; onSection: (
       {rect ? (
         <div className="pointer-events-none absolute rounded-md ring-2 ring-ring transition-all duration-300"
           style={{ top: rect.top - pad, left: rect.left - pad, width: rect.width + pad * 2, height: rect.height + pad * 2,
-            boxShadow: "0 0 0 9999px rgba(8, 10, 14, 0.58)" }} />
-      ) : <div className="absolute inset-0 bg-black/55" />}
+            boxShadow: "0 0 0 9999px var(--tour-dim)" }} />
+      ) : <div className="absolute inset-0" style={{ background: "var(--tour-dim)" }} />}
       <div ref={card} className="absolute border border-border bg-popover p-4 shadow-2xl transition-all duration-300"
         style={{ top: cardTop, left: cardLeft, width: cardW }}>
         <div className="text-[12px] text-muted-foreground">Step {i + 1} of {TOUR_STEPS.length}</div>

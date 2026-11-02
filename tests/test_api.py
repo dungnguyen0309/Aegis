@@ -55,6 +55,22 @@ def test_listed_entity_stops_the_deal():
     a = assess(company="OOO Радиоавтоматика", jurisdiction="RU", hs="854231", intermediary="AM")
     assert a["entity"]["status"] == "MATCH"
     assert a["verdict"]["code"] == "STOP"
+    assert len(a["verdict"]["actions"]) == 3
+    m = client.post("/api/memo", json={**BASE, "company": "OOO Радиоавтоматика", "jurisdiction": "RU",
+                                       "hs": "854231", "intermediary": "AM"}).json()
+    assert m["edd"] == a["verdict"]["actions"]  # a Stop briefing lists only the stop steps
+    assert "## Required actions" in m["markdown"] and "end-use statement" not in m["markdown"]
+
+
+def test_missing_baseline_is_not_reported_as_low_risk():
+    years = list(range(2017, 2026))
+    series = {"years": years, "values": [0.0] * len(years), "russia": [0.0] * len(years), "unit": "EUR"}
+    c = hs_codes.classify("848210")
+    r = anomaly.analyse(series, c, "KZ")
+    assert r["no_baseline"]
+    from _lib import memo
+    v = memo.decide({"status": "CLEAN"}, r, c)
+    assert any("No pre-war trade" in n for n in v["notes"])
 
 
 def test_validation():

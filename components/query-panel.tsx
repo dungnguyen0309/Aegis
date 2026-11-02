@@ -38,7 +38,7 @@ export const PRESETS: { label: string; note: string; form: FormState }[] = [
   },
   {
     label: "Listed buyer",
-    note: "Name on the US OFAC list",
+    note: "Russian buyer on the US OFAC list",
     form: { company: "OOO Радиоавтоматика", jurisdiction: "RU", ubos: "", hs: "854231",
       exporter: "DE", intermediary: "AM", live: false },
   },
@@ -95,7 +95,7 @@ export function QueryPanel({ reference, form, setForm, onRun, loading, active }:
   };
 
   return (
-    <Panel title="New assessment" bodyClassName="space-y-4">
+    <Panel title="New assessment" bodyClassName="space-y-4" className="overflow-visible">
       <div>
         <h3 className="mb-1.5 text-[15px] font-bold">Examples</h3>
         <div className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-1">
@@ -186,12 +186,15 @@ export function QueryPanel({ reference, form, setForm, onRun, loading, active }:
           <Switch checked={form.live} onCheckedChange={(v) => set({ live: v })} aria-label="Live APIs: fetch fresh Eurostat data" />
         </label>
 
-        <Button type="submit" className="w-full" size="lg" disabled={loading || blocked !== null}
-          aria-describedby={blocked ? "run-blocked" : undefined}>
-          {loading ? <SpinnerGapIcon className="animate-spin" /> : <CrosshairIcon />}
-          {loading ? "Assessing…" : "Run assessment"}
-        </Button>
-        {blocked && !loading && <p id="run-blocked" className="text-[12px] text-muted-foreground">{blocked}</p>}
+        {/* Sticks to the bottom of the sidebar (desktop) or the screen (phone), so Run is always in reach */}
+        <div className="sticky bottom-0 -mx-4 -mb-4 space-y-1.5 border-t border-border bg-card px-4 pb-4 pt-3">
+          <Button type="submit" className="w-full" size="lg" disabled={loading || blocked !== null}
+            aria-describedby={blocked ? "run-blocked" : undefined}>
+            {loading ? <SpinnerGapIcon className="animate-spin" /> : <CrosshairIcon />}
+            {loading ? "Assessing…" : "Run assessment"}
+          </Button>
+          {blocked && !loading && <p id="run-blocked" className="text-[12px] text-muted-foreground">{blocked}</p>}
+        </div>
       </form>
     </Panel>
   );

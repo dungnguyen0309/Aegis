@@ -48,9 +48,20 @@ const Heatmap = memo(function Heatmap({ rows, partners, onHover, onAssess }: {
   onHover: (c: Hovered) => void;
   onAssess: (hs: string, partner: string) => void;
 }) {
+  const [cur, setCur] = useState("0-0"); // the one cell in the tab order: the last one focused
   return (
-    <div className="max-h-[680px] overflow-auto">
-      <table className="w-full border-separate border-spacing-0 text-[12px]">
+    <div className="max-h-[680px] scroll-pl-[236px] scroll-pt-[53px] overflow-auto">
+      <table className="w-full border-separate border-spacing-0 text-[12px]" onKeyDown={(e) => {
+        const at = (e.target as HTMLElement).dataset.cell?.split("-").map(Number);
+        const step = ({ ArrowRight: [0, 1], ArrowLeft: [0, -1], ArrowDown: [1, 0], ArrowUp: [-1, 0] } as Record<string, number[]>)[e.key];
+        if (!at || !step) return;
+        const next = e.currentTarget.querySelector<HTMLButtonElement>(`[data-cell="${at[0] + step[0]}-${at[1] + step[1]}"]`);
+        if (next) {
+          e.preventDefault();
+          next.focus({ preventScroll: true });
+          next.scrollIntoView({ block: "nearest", inline: "nearest" }); // honours the scroll padding for the sticky header and column
+        }
+      }}>
         <thead className="sticky top-0 z-10 bg-card">
           <tr>
             <th className="sticky left-0 z-20 min-w-[230px] border-b border-border bg-card px-3 py-2 text-left">Item</th>
@@ -65,7 +76,7 @@ const Heatmap = memo(function Heatmap({ rows, partners, onHover, onAssess }: {
           </tr>
         </thead>
         <tbody>
-          {rows.map((r) => (
+          {rows.map((r, i) => (
             <tr key={r.hs}>
               <th className="sticky left-0 z-[5] border-b border-border bg-card px-3 py-1 text-left font-normal">
                 <div className="flex items-center gap-2">
@@ -76,11 +87,11 @@ const Heatmap = memo(function Heatmap({ rows, partners, onHover, onAssess }: {
                   </div>
                 </div>
               </th>
-              {r.cells.map((c) => (
+              {r.cells.map((c, j) => (
                 <td key={c.partner} className="border-b border-border p-0.5">
-                  <button type="button" style={cellStyle(c.score)}
+                  <button type="button" style={cellStyle(c.score)} data-cell={`${i}-${j}`} tabIndex={cur === `${i}-${j}` ? 0 : -1}
                     onMouseEnter={() => onHover({ ...c, hs: r.hs, description: r.description, tier: r.tier })}
-                    onFocus={() => onHover({ ...c, hs: r.hs, description: r.description, tier: r.tier })}
+                    onFocus={() => { setCur(`${i}-${j}`); onHover({ ...c, hs: r.hs, description: r.description, tier: r.tier }); }}
                     onClick={() => onAssess(r.hs, c.partner)}
                     aria-label={`HS ${r.hs} to ${c.partner}: score ${c.score}, ${c.band}`}
                     className="block h-7 w-full min-w-[40px] text-center text-[12px] font-bold tabular outline-none ring-inset transition-shadow hover:ring-2 hover:ring-foreground focus-visible:ring-2 focus-visible:ring-ring">
@@ -173,7 +184,7 @@ export function RadarView({ onAssess }: { onAssess: (hs: string, partner: string
                     <div className="mt-1 flex items-center gap-2 text-[12px] tabular">
                       <StatusBadge tone={bandTone[c.band]}>{c.score}</StatusBadge>
                       <span>{c.multiplier !== null ? `${times(c.multiplier)} pre-war` : c.emergent ? "new flow" : ""}</span>
-                      {c.ytd !== null && <span className="text-muted-foreground">this year {times(c.ytd)}</span>}
+                      {c.ytd !== null && data.latest_month && <span className="text-muted-foreground">{data.latest_month.slice(0, 4)} so far {times(c.ytd)} vs 2021</span>}
                     </div>
                     {Math.max(c.multiplier ?? 0, c.ytd ?? 0) >= 20 && (
                       <div className="mt-0.5 text-[12px] text-muted-foreground">Small pre-war base: the multiple overstates the volume.</div>
@@ -186,7 +197,9 @@ export function RadarView({ onAssess }: { onAssess: (hs: string, partner: string
 
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
             <Panel title="All corridors" tour="skyline" bodyClassName={mode === "heatmap" ? "p-0" : undefined}
-              subtitle={mode === "3d" ? "Bar height and colour show the route risk. Hover for details, click to assess." : "Stronger colour means a higher route risk. Click a cell to assess."}
+              subtitle={mode === "3d"
+                ? <>Bar height and colour show the route risk. <span className="[@media(hover:none)]:hidden">Hover for details, click to assess.</span><span className="hidden [@media(hover:none)]:inline">Tap a bar to assess it.</span></>
+                : <>Stronger colour means a higher route risk. <span className="[@media(hover:none)]:hidden">Click a cell to assess.</span><span className="hidden [@media(hover:none)]:inline">Tap a cell to assess it.</span></>}
               action={<>
                 <Segmented value={sort} onChange={setSort} options={[{ value: "tier", label: "By tier" }, { value: "risk", label: "By risk" }]} />
                 <Segmented value={mode} onChange={setMode} options={[
@@ -209,7 +222,7 @@ export function RadarView({ onAssess }: { onAssess: (hs: string, partner: string
             </Panel>
 
             <div className="xl:sticky xl:top-4 xl:self-start">
-              <Panel title="Selected corridor" subtitle="Hover a bar or cell to inspect it.">
+              <Panel title="Selected corridor" subtitle={<><span className="[@media(hover:none)]:hidden">Hover a bar or cell to inspect it.</span><span className="hidden [@media(hover:none)]:inline">The highest-risk corridor is shown.</span></>}>
                 {detail && (
                   <div className="space-y-3">
                     <div className="flex items-center gap-3">

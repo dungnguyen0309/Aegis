@@ -56,6 +56,7 @@ export function Dashboard() {
   const [memoLoading, setMemoLoading] = useState(false);
   const [memoError, setMemoError] = useState<string | null>(null);
   const [weights, setWeights] = useState<Weights | null>(null);
+  const [pending, setPending] = useState("");
   const [batch, setBatch] = useState<BatchState>({ text: "", result: null });
   const lastRun = useRef<FormState>(PRESETS[0].form);
   // The address the page was opened with (read once) and whether its state has been applied yet
@@ -89,7 +90,7 @@ export function Dashboard() {
       setOffline(false);
       setMemo(null);
       void fetchMemo(f, w, id);
-      // On narrow screens the form sits above the results: bring the new result into view
+      // On narrow screens the form sits below the results: bring the new result back into view
       if (reveal && window.matchMedia("(max-width: 1023px)").matches) {
         requestAnimationFrame(() => document.querySelector('[data-tour="verdict"]')?.scrollIntoView({ behavior: "smooth", block: "start" }));
       }
@@ -105,6 +106,7 @@ export function Dashboard() {
   const run = useCallback((f: FormState, w: Weights | null = weights, reveal = false) => {
     const id = ++seq.current;
     lastRun.current = f;
+    setPending(f.company);
     setActive(PRESETS.findIndex((p) => JSON.stringify(p.form) === JSON.stringify(f)));
     setLoading(true);
     setError(null);
@@ -230,7 +232,8 @@ export function Dashboard() {
 
       {view === "assess" && (
         <main className="mx-auto grid w-full max-w-[1440px] flex-1 gap-5 px-4 py-5 sm:px-6 lg:grid-cols-[300px_minmax(0,1fr)]">
-          <aside className="order-2 lg:order-none lg:sticky lg:top-4 lg:self-start" data-tour="query">
+          {/* Height cap = viewport minus the header and page padding, so the sticky Run footer is on screen from the start */}
+          <aside className="order-2 lg:order-none lg:sticky lg:top-4 lg:max-h-[calc(100dvh-6rem)] lg:scroll-pb-28 lg:self-start lg:overflow-y-auto" data-tour="query">
             <QueryPanel reference={reference} form={form} setForm={(f) => { setForm(f); setActive(null); }}
               onRun={(f) => run(f, weights, true)} loading={loading} active={active} />
           </aside>
@@ -246,6 +249,14 @@ export function Dashboard() {
                 <Button size="xs" variant="outline" onClick={() => run(lastRun.current)}>Try again</Button>
               </div>
             )}
+
+            {/* Always mounted, so screen readers announce the text when a rerun starts */}
+            <p role="status" className={loading && a ? "flex items-center gap-2 border border-border bg-card px-4 py-2 text-sm" : "sr-only"}>
+              {loading && a && <>
+                <SpinnerGapIcon className="size-4 shrink-0 animate-spin motion-reduce:animate-none" aria-hidden />
+                Running the assessment for {pending}.{pending !== a.query.company && ` The result below is for ${a.query.company}.`}
+              </>}
+            </p>
 
             {!a ? (
               loading && !offline ? (
@@ -264,7 +275,10 @@ export function Dashboard() {
               )
             ) : (
               <>
-                <AssessmentSummary a={a} onSection={setSection} listsDate={reference?.sanctions.retrieved} />
+                <AssessmentSummary a={a} onSection={setSection} listsDate={reference?.sanctions.retrieved}
+                  example={PRESETS.some((p) => p.form.company === a.query.company && p.form.hs === a.query.hs
+                    && p.form.intermediary === a.query.intermediary && p.form.exporter === a.query.exporter
+                    && p.form.jurisdiction === (a.query.jurisdiction ?? "") && a.query.ubos.length === 0)} />
                 <SectionTabs value={section} onChange={setSection} a={a} />
                 <div id="section-panel" role="tabpanel" aria-labelledby={`tab-${section}`} className="space-y-4">
 

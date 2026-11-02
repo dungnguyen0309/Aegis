@@ -294,6 +294,7 @@ async def batch(req: BatchRequest) -> dict:
             "best_lists": top[0]["lists"] if top else [],
             "best_similarity": top[0]["score"] if top else None,
             "hs": None, "chpl_tier": None, "intermediary": None, "route_score": None, "route_band": None,
+            "route_no_baseline": None,
             "verdict": None,
         }
         hs = hs_codes.clean_hs(row.hs or "")
@@ -305,7 +306,8 @@ async def batch(req: BatchRequest) -> dict:
             if series:
                 route = anomaly.analyse(series, c, inter)
                 v = memo.decide(entity, route, c)
-                result.update(intermediary=inter, route_score=route["score"], route_band=route["band"], verdict=v["code"])
+                result.update(intermediary=inter, route_score=route["score"], route_band=route["band"],
+                              route_no_baseline=route["no_baseline"], verdict=v["code"])
         if result["verdict"] is None:
             result["verdict"] = {"MATCH": "STOP", "PARTIAL": "HOLD"}.get(entity["status"], "STANDARD")
         out.append(result)

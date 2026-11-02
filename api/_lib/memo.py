@@ -22,6 +22,13 @@ LEVELS = {
     "ELEVATED": {"level": 2, "title": "Enhanced due diligence recommended"},
     "STANDARD": {"level": 1, "title": "Standard due diligence"},
 }
+# A sanctions match ends the transaction: these steps replace the due-diligence list
+STOP_ACTIONS = [
+    "Stop the shipment and any payment now.",
+    "Escalate to the export control officer (Ausfuhrverantwortliche/r) and legal counsel with the matched list entry.",
+    "Record the decision, the match and the lists checked in the compliance file.",
+]
+ENTITY_LABEL = {"CLEAN": "No match", "PARTIAL": "Possible match", "MATCH": "Match"}
 MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
 SOURCES = [
@@ -67,9 +74,11 @@ def decide(entity: dict, route: dict, classification: dict) -> dict:
         code = "STANDARD"
     if entity["status"] == "CLEAN" and route["band"] in ("CRITICAL", "HIGH"):
         notes.append("Clean name screen does not offset route risk: shell companies are often unlisted.")
+    if route.get("no_baseline"):
+        notes.append("No pre-war trade to compare with, so the statistical parts of the route score are missing.")
     if classification["chpl"]:
         notes.append("Art. 12g No-Russia clause is mandatory for this item whatever the risk level.")
-    return {"code": code, **LEVELS[code], "notes": notes}
+    return {"code": code, **LEVELS[code], "notes": notes, "actions": STOP_ACTIONS if code == "STOP" else []}
 
 
 def _money(v: float, unit: str = "EUR") -> str:
@@ -98,15 +107,15 @@ def _findings(ctx: dict) -> list[dict]:
         if subj["status"] != "CLEAN" and subj["matches"]:
             m = subj["matches"][0]
             since = f"; listed since {m['listed_since']}" if m.get("listed_since") else ""
-            add("critical" if subj["status"] == "MATCH" else "high", "Entity",
+            add("critical" if subj["status"] == "MATCH" else "high", "Counterparty",
                 f"{subj['role']} '{subj['name']}' resembles '{m['name']}' ({', '.join(m['lists'])}) at "
                 f"{m['score']:.0f}% similarity{since}.")
     if e["status"] == "CLEAN":
-        add("info", "Entity", f"No match above 80% for {len(e['subjects'])} screened name(s) against EU, OFAC SDN and "
-                              f"UN lists ({e['source']}).")
+        add("info", "Counterparty", f"No listed name at 80% similarity or more for the {len(e['subjects'])} screened name(s) "
+                                    f"(EU, OFAC SDN and UN lists; {e['source']}).")
 
     if c["chpl"]:
-        add("high", "Item", f"HS {hs} ({c['description'].lower()}) is a Tier {c['tier']} Common High Priority Item, "
+        add("high", "Goods", f"HS {hs} ({c['description'].lower()}) is a Tier {c['tier']} Common High Priority Item, "
                             "a category found in Russian weapons systems on the battlefield.")
 
     if a["emergent"]:
@@ -157,7 +166,7 @@ def _findings(ctx: dict) -> list[dict]:
 
     prof = a.get("jurisdiction_profile")
     if prof:
-        add("medium" if prof["exposure"] >= 9 else "info", "Jurisdiction", f"{partner}: {prof['rationale']}")
+        add("medium" if prof["exposure"] >= 9 else "info", "Country", f"{partner}: {prof['rationale']}")
     sens = a["sensitivity"]
     if a["custom_weights"]:
         add("info", "Method", f"Custom score weights applied: route risk {a['score']} ({a['band'].capitalize()}); default weights "
@@ -198,10 +207,9 @@ def _legal(ctx: dict) -> list[str]:
 
 def _edd(ctx: dict) -> list[str]:
     c, a, v = ctx["classification"], ctx["route"], ctx["verdict"]
-    steps = []
     if v["code"] == "STOP":
-        steps.append("Stop shipment and payment now; escalate to the export control officer "
-                     "(Ausfuhrverantwortliche/r) and legal counsel.")
+        return list(STOP_ACTIONS)
+    steps = []
     if v["code"] == "HOLD":
         steps.append("Resolve the possible match first: compare dates of birth, addresses, registration numbers and "
                      "ownership against the listing before anything ships.")
@@ -265,6 +273,13 @@ async def _narrative(ctx: dict, findings: list[dict]) -> str | None:
         return None
 
 
+def _route_label(scores: dict) -> str:
+    """A Low score without a pre-war baseline is missing data, not low risk (same rule as the app)."""
+    if scores.get("route_no_baseline") and scores["route_band"] == "LOW":
+        return "No baseline"
+    return scores["route_band"].capitalize()
+
+
 def _markdown(m: dict) -> str:
     lines = [
         f"# {m['title']}",
@@ -275,15 +290,16 @@ def _markdown(m: dict) -> str:
         "## Bottom line",
         m["bluf"],
         "",
-        f"Route risk: **{m['scores']['route']}/100 ({m['scores']['route_band'].capitalize()})**  |  "
-        f"Sanctions screening: **{m['scores']['entity']}/100 ({m['scores']['entity_status'].capitalize()})**",
+        f"Route risk: **{m['scores']['route']}/100 ({_route_label(m['scores'])})**  |  "
+        f"Sanctions screening: **{m['scores']['entity']}/100 ({ENTITY_LABEL[m['scores']['entity_status']]})**",
         "",
     ]
     if m.get("narrative"):
         lines += ["## Analyst assessment", m["narrative"], ""]
     lines += ["## Key findings"] + [f"- **{f['area']}:** {f['text']}" for f in m["findings"]] + [""]
     lines += ["## Legal exposure"] + [f"- {x}" for x in m["legal"]] + [""]
-    lines += ["## Recommended enhanced due diligence"] + [f"{i}. {x}" for i, x in enumerate(m["edd"], 1)] + [""]
+    heading = "Required actions" if m["verdict"]["code"] == "STOP" else "Recommended enhanced due diligence"
+    lines += [f"## {heading}"] + [f"{i}. {x}" for i, x in enumerate(m["edd"], 1)] + [""]
     lines += ["## Limitations"] + [f"- {x}" for x in m["limitations"]] + [""]
     lines += ["## Sources"] + [f"- [{s['label']}]({s['url']})" for s in m["sources"]]
     return "\n".join(lines) + "\n"
@@ -309,6 +325,7 @@ async def build(ctx: dict) -> dict:
         "verdict": v,
         "bluf": f"{v['code']}: {v['title']}." + (" " + " ".join(v["notes"]) if v["notes"] else ""),
         "scores": {"route": ctx["route"]["score"], "route_band": ctx["route"]["band"],
+                   "route_no_baseline": bool(ctx["route"].get("no_baseline")),
                    "entity": ctx["entity"]["score"], "entity_status": ctx["entity"]["status"]},
         "findings": findings,
         "legal": _legal(ctx),

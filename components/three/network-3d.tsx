@@ -7,7 +7,7 @@ import { flagTexture, markTexture, personTexture } from "@/components/three/mark
 import { Frame3D, ToolButton, type Tip, tipAt, usePicking, useStage } from "@/components/three/frame";
 import { StatusBadge } from "@/components/status";
 import { Flag, regionName } from "@/components/visuals";
-import { entityTone } from "@/lib/format";
+import { entityTone, entityLabel } from "@/lib/format";
 import { useTheme } from "@/lib/theme";
 import { canvasTexture, cssVar, disposeTree, pageFont } from "@/lib/three-stage";
 import type { Entity, Match } from "@/lib/types";
@@ -38,10 +38,10 @@ function graph(e: Entity, company: string, jurisdiction: string | null) {
     const isCompany = s.role === "Company";
     add({ id, kind: isCompany ? "company" : "person", label: s.name, size: isCompany ? 0.56 : 0.42, pinned: isCompany, flagged: s.status !== "CLEAN",
       info: <><div className="text-[12px] text-faint">{s.role}</div><div className="font-bold">{s.name}</div>
-        <div className="mt-1"><StatusBadge tone={entityTone[s.status]}>{s.status}{s.status !== "CLEAN" && ` · ${s.best_score.toFixed(0)}%`}</StatusBadge></div></> });
+        <div className="mt-1"><StatusBadge tone={entityTone[s.status]}>{entityLabel[s.status]}{s.status !== "CLEAN" && ` · ${s.best_score.toFixed(0)}%`}</StatusBadge></div></> });
     if (!isCompany) edges.push({ a: "s:0", b: id, kind: "owner" });
     HUBS.forEach((h) => edges.push({ a: id, b: `hub:${h.id}`, kind: "screened" }));
-    s.matches.filter((m) => m.score >= 60).slice(0, 4).forEach((m: Match) => {
+    s.matches.filter((m) => m.score >= 70).slice(0, 4).forEach((m: Match) => {
       const mid = `m:${m.id}`;
       if (!nodes.some((n) => n.id === mid)) {
         add({ id: mid, kind: "match", label: m.name, size: 0.34, flagged: true, url: m.url, individual: m.kind === "P",
@@ -248,9 +248,9 @@ export function Network3D({ e, company, jurisdiction }: { e: Entity; company: st
           </div>
         } />
       <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-muted-foreground">
-        {matches === 0 && <span className="font-bold text-foreground">No listed names matched (similarity ≥ 60%).</span>}
+        {matches === 0 && <span className="font-bold text-foreground">No listed name at 70% similarity or more.</span>}
         <span className="inline-flex items-center gap-1.5"><span className="h-0.5 w-5" style={{ background: "var(--status-critical)" }} />Match ≥ 93%</span>
-        <span className="inline-flex items-center gap-1.5"><span className="h-0.5 w-5" style={{ background: "var(--status-serious)" }} />Partial 80–93%</span>
+        <span className="inline-flex items-center gap-1.5"><span className="h-0.5 w-5" style={{ background: "var(--status-serious)" }} />Possible match 80–93%</span>
         <span className="inline-flex items-center gap-1.5"><span className="h-0.5 w-5" style={{ background: "var(--chart-baseline)" }} />Weak, screened or ownership link</span>
         <span>Line thickness: name similarity</span>
       </div>

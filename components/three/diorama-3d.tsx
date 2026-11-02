@@ -5,7 +5,7 @@ import * as THREE from "three";
 import { flagTexture, markTexture } from "@/components/three/marks";
 import { Frame3D, type Tip, tipAt, usePicking, useStage } from "@/components/three/frame";
 import { regionName } from "@/components/visuals";
-import { money } from "@/lib/format";
+import { money, entityLabel, routeStatus } from "@/lib/format";
 import { MODE_LABEL, ROUTE_MODES, type Mode } from "@/lib/routes";
 import { useTheme } from "@/lib/theme";
 import { mergeStatic } from "@/lib/three-merge";
@@ -366,12 +366,12 @@ export function Diorama3D({ a }: { a: Assessment }) {
     ] });
     pick(buy, { title: <>{q.company}</>, lines: [
       `${regionName(buyerCountry)}${buyerCountry === q.intermediary ? " · buyer" : ` · via ${q.intermediary_name}`}`,
-      `Sanctions screening: ${entity.status === "CLEAN" ? "no match" : entity.status.toLowerCase()}${flagged ? ` (${entity.best_score.toFixed(0)}% similarity)` : ""}`,
+      `Sanctions screening: ${entityLabel[entity.status as keyof typeof entityLabel].toLowerCase()}${flagged ? ` (${entity.best_score.toFixed(0)}% similarity)` : ""}`,
       "Company mark is generated, not a real logo",
     ] });
     pick(ru, { title: <>Russia · sanctioned destination</>, lines: [
       ruDrop !== null ? `Direct exports of this item ${ruDrop > 0 ? "−" : "+"}${Math.abs(ruDrop)}% since 2021` : "",
-      `Route risk ${route.score} / 100 · ${route.band}`,
+      `Route risk ${route.score} / 100 · ${routeStatus(route.band, route.no_baseline).label.toLowerCase()}`,
     ] });
     [exp, buy, ru].forEach(mergeStatic);
     root.add(exp, buy, ru);

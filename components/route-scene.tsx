@@ -1,9 +1,9 @@
 "use client";
 
 import { lazy3D } from "@/components/three/lazy";
-import { StatusBadge } from "@/components/status";
+import { StatusBadge, sentenceCase } from "@/components/status";
 import { CompanyMark, Flag, regionName } from "@/components/visuals";
-import { bandTone, entityTone, money } from "@/lib/format";
+import { entityTone, money, entityLabel, routeStatus } from "@/lib/format";
 import { MODE_LABEL, ROUTE_MODES, type Mode } from "@/lib/routes";
 import type { Assessment } from "@/lib/types";
 import { useReducedMotion } from "@/lib/use-reduced-motion";
@@ -306,13 +306,15 @@ export function RouteScene({ a, view }: { a: Assessment; view: "3d" | "flat" }) 
             <Flag code={buyerCountry} /> {regionName(buyerCountry)}
             {buyerCountry === q.intermediary ? " · buyer" : ` · via ${q.intermediary_name}`}
           </div>
-          <StatusBadge tone={entityTone[entity.status]}>{entity.status}</StatusBadge>
+          <StatusBadge tone={entityTone[entity.status]}>{entityLabel[entity.status]}</StatusBadge>
         </div>
         <div className="flex flex-col items-center gap-1">
           <div className="flex items-center gap-1.5 font-bold"><Flag code="RU" /> Russia</div>
           <div className="text-muted-foreground">Sanctioned destination</div>
           {ruDrop !== null && <div className="tabular">Direct exports {ruDrop > 0 ? "−" : "+"}{Math.abs(ruDrop)}%</div>}
-          <StatusBadge tone={bandTone[route.band]}><span className="max-sm:hidden">Route</span> {route.band}</StatusBadge>
+          <StatusBadge tone={routeStatus(route.band, route.no_baseline).tone}>
+            <span className="max-sm:hidden">Route</span> {sentenceCase(routeStatus(route.band, route.no_baseline).label)}
+          </StatusBadge>
         </div>
       </div>
       </>

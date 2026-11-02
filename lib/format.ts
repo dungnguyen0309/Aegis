@@ -45,6 +45,21 @@ export const entityTone: Record<EntityStatus, Tone> = {
   MATCH: "critical",
 };
 
+/** A route band as shown. A Low score with no pre-war baseline means "missing", not "safe": never a green Low. */
+export function routeStatus(band: Band, noBaseline?: boolean | null): { tone: Tone; label: string } {
+  return noBaseline && band === "LOW" ? { tone: "neutral", label: "No baseline" } : { tone: bandTone[band], label: band };
+}
+
+/** One wording for screening results everywhere (the API codes are CLEAN / PARTIAL / MATCH). */
+export const entityLabel: Record<EntityStatus, string> = {
+  CLEAN: "No match",
+  PARTIAL: "Possible match",
+  MATCH: "Match",
+};
+
+/** The similarity rule, stated once: the thresholds in api/_lib/sanctions.py (MATCH_AT, PARTIAL_AT, listing cut-off). */
+export const SCREENING_RULE = "Match from 93% similarity, possible match from 80%. Names from 70% are listed for review.";
+
 export const verdictTone: Record<VerdictCode, Tone> = {
   STOP: "critical",
   HOLD: "serious",

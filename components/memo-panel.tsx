@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Panel } from "@/components/panel";
 import { sentenceCase, ToneIcon } from "@/components/status";
-import type { Tone } from "@/lib/format";
+import { entityLabel, type Tone, routeStatus } from "@/lib/format";
 import type { Memo } from "@/lib/types";
 
 const SEVERITY_INK: Record<Memo["findings"][number]["severity"], string> = {
@@ -19,7 +19,7 @@ const SEVERITY_INK: Record<Memo["findings"][number]["severity"], string> = {
 
 function MemoDocument({ m }: { m: Memo }) {
   return (
-    <article className="bg-white px-8 py-7 font-sans text-[12.5px] leading-[1.55] text-[#151515] print:bg-white print:p-0">
+    <article className="bg-white px-8 py-7 font-sans text-[13.5px] leading-[1.55] text-[#151515] print:bg-white print:p-0">
       <div className="flex items-center justify-between border-b-2 border-[#151515] pb-2 font-mono text-[13px]">
         <span>{m.marking}</span>
         <span>Ref {m.ref} · {m.date}</span>
@@ -31,7 +31,7 @@ function MemoDocument({ m }: { m: Memo }) {
         <div className="font-mono text-[14px] font-bold text-[#444]">Bottom line</div>
         <p className="font-semibold">{m.bluf}</p>
         <p className="mt-1 font-mono text-[12px] text-[#444]">
-          Route risk {m.scores.route}/100 {sentenceCase(m.scores.route_band)} · Sanctions screening {m.scores.entity}/100 {sentenceCase(m.scores.entity_status)}
+          Route risk {m.scores.route}/100 {sentenceCase(routeStatus(m.scores.route_band, m.scores.route_no_baseline).label)} · Sanctions screening {m.scores.entity}/100 {entityLabel[m.scores.entity_status]}
         </p>
       </div>
 
@@ -61,7 +61,7 @@ function MemoDocument({ m }: { m: Memo }) {
       </section>
 
       <section className="mt-4">
-        <h4 className="memo-h">Recommended enhanced due diligence</h4>
+        <h4 className="memo-h">{m.verdict.code === "STOP" ? "Required actions" : "Recommended enhanced due diligence"}</h4>
         <ol className="list-decimal space-y-1 pl-4">{m.edd.map((x) => <li key={x}>{x}</li>)}</ol>
       </section>
 
@@ -108,7 +108,7 @@ export function MemoPanel({ memo, loading, error, onGenerate, stale }: {
       }
     >
       {memo && !stale ? (
-        <div className="max-h-[720px] overflow-y-auto bg-muted p-3 sm:p-5"><div className="mx-auto max-w-[820px] ring-1 ring-border">
+        <div className="bg-muted p-3 sm:p-5"><div className="mx-auto max-w-[720px] ring-1 ring-border">
           <MemoDocument m={memo} />
         </div></div>
       ) : (
@@ -130,11 +130,8 @@ export function MemoPanel({ memo, loading, error, onGenerate, stale }: {
 }
 
 /** Briefing areas and the assessment tab that holds their evidence. */
-const AREA: Record<string, { label: string; section: Section }> = {
-  Entity: { label: "Counterparty", section: "counterparty" },
-  Item: { label: "Goods", section: "goods" },
-  Jurisdiction: { label: "Country", section: "route" },
-};
+/** Briefing areas (named like the assessment tabs by the API) and the tab that holds their evidence. */
+const AREA_SECTION: Record<string, Section> = { Counterparty: "counterparty", Goods: "goods" };
 const SEVERITY_TONE: Record<Memo["findings"][number]["severity"], Tone> = {
   critical: "critical", high: "serious", medium: "warning", info: "neutral",
 };
@@ -151,22 +148,26 @@ export function KeyFindings({ memo, loading, error, onRetry, onSection }: {
     <Panel title="Key findings" subtitle="What the checks found. Select a finding to see the evidence." bodyClassName="p-0">
       {memo ? (
         <ul className="divide-y divide-border">
-          {memo.findings.map((f) => {
-            const area = AREA[f.area] ?? { label: f.area, section: "route" as Section };
-            return (
-              <li key={f.text}>
-                <button type="button" onClick={() => onSection(area.section)}
-                  className="group flex w-full items-start gap-3 px-5 py-2.5 text-left transition-colors hover:bg-muted">
-                  <ToneIcon tone={SEVERITY_TONE[f.severity]} className="mt-[3px] size-4" />
-                  <span className="min-w-0 flex-1 text-[14px] leading-snug sm:flex sm:gap-3">
-                    <span className="block font-semibold sm:w-24 sm:shrink-0">{area.label}</span>
-                    <span className="block">{f.text}</span>
+          {/* One row per area (in order of first, most severe appearance), so repeated areas read as a group */}
+          {[...new Set(memo.findings.map((f) => f.area))].map((area) => (
+            <li key={area}>
+              <button type="button" onClick={() => onSection(AREA_SECTION[area] ?? "route")}
+                className="group flex w-full items-start gap-3 px-5 py-2.5 text-left transition-colors hover:bg-muted">
+                <span className="min-w-0 flex-1 text-[14px] leading-snug sm:flex sm:gap-3">
+                  <span className="block font-semibold sm:w-24 sm:shrink-0">{area}</span>
+                  <span className="block min-w-0 flex-1 space-y-1">
+                    {memo.findings.filter((f) => f.area === area).map((f) => (
+                      <span key={f.text} className="flex items-start gap-2">
+                        <ToneIcon tone={SEVERITY_TONE[f.severity]} className="mt-[3px] size-4" />
+                        <span>{f.text}</span>
+                      </span>
+                    ))}
                   </span>
-                  <CaretRightIcon className="mt-[3px] size-3.5 shrink-0 opacity-40 group-hover:opacity-100" aria-hidden />
-                </button>
-              </li>
-            );
-          })}
+                </span>
+                <CaretRightIcon className="mt-[3px] size-3.5 shrink-0 opacity-40 group-hover:opacity-100" aria-hidden />
+              </button>
+            </li>
+          ))}
         </ul>
       ) : error && !loading ? (
         <div className="flex flex-wrap items-center gap-3 px-5 py-4 text-sm text-muted-foreground">

@@ -5,7 +5,7 @@ import * as THREE from "three";
 import { Frame3D, type Tip, tipAt, usePicking, useStage } from "@/components/three/frame";
 import { StatusBadge } from "@/components/status";
 import { Flag, regionName } from "@/components/visuals";
-import { entityTone, toneVar, verdictTone } from "@/lib/format";
+import { entityTone, toneVar, verdictTone, entityLabel } from "@/lib/format";
 import { useTheme } from "@/lib/theme";
 import { canvasTexture, cssVar, disposeTree, pageFont } from "@/lib/three-stage";
 import type { BatchRowOut } from "@/lib/types";
@@ -128,8 +128,8 @@ export function RiskCube3D({ rows, onAssess }: { rows: BatchRowOut[]; onAssess?:
     back.position.set(-W / 2 - 0.35, H / 2, -D / 2);
     g.add(back);
     const zones = textPlane([
-      { text: "Partial: HOLD", x: 0.02, y: 0.1, size: 0.1, bold: true, color: ink },
-      { text: "Match: STOP", x: 0.02, y: 0.26, size: 0.1, bold: true, color: cssVar("--status-critical") },
+      { text: "Possible match: Hold", x: 0.02, y: 0.1, size: 0.1, bold: true, color: ink },
+      { text: "Match: Stop", x: 0.02, y: 0.26, size: 0.1, bold: true, color: cssVar("--status-critical") },
     ], 1.0, 0.36);
     zones.position.set(xOf(PARTIAL) + 0.5, H + 0.2, -D / 2);
     g.add(zones);
@@ -188,7 +188,7 @@ export function RiskCube3D({ rows, onAssess }: { rows: BatchRowOut[]; onAssess?:
           <div className="flex items-center gap-1.5 font-bold">{r.company}{r.country && <Flag code={r.country} size={14} />}</div>
           <div className="mt-1"><StatusBadge tone={verdictTone[r.verdict]}>{r.verdict}</StatusBadge></div>
           <div className="mt-1 flex items-center gap-1.5">
-            <StatusBadge tone={entityTone[r.entity_status]}>{r.entity_status}</StatusBadge>
+            <StatusBadge tone={entityTone[r.entity_status]}>{entityLabel[r.entity_status]}</StatusBadge>
             <span>{r.best_similarity !== null ? `${r.best_similarity.toFixed(0)}% · ${r.best_match}` : "no listed name"}</span>
           </div>
           <div>Route: {r.route_score !== null && r.intermediary ? `${r.route_score} / 100 via ${regionName(r.intermediary)}` : "not checked (no HS code or route)"}</div>

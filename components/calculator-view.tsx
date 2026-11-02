@@ -124,7 +124,7 @@ export function CalculatorView({ reference, from }: { reference: Reference | nul
   return (
     <div className="space-y-4">
       <PageHeader title="Risk calculator"
-        description="Change the export figures and see how the route risk and the recommended action respond. Same formulas as the assessment."
+        description="Change the export figures and watch the route risk and recommended action update. Same formulas as the assessment."
         actions={<>
           <Button variant="outline" size="sm" onClick={reset}><ArrowCounterClockwiseIcon /> {from ? "Reset to assessment" : "Reset"}</Button>
           <Button variant="outline" size="sm" onClick={download}><DownloadSimpleIcon /> Download CSV</Button>
@@ -159,7 +159,7 @@ export function CalculatorView({ reference, from }: { reference: Reference | nul
           <div className="space-y-1.5">
             <span className="block text-[13px] font-semibold">Sanctions screening result</span>
             <Segmented value={inputs.screening} onChange={(v) => set({ screening: v })} options={[
-              { value: "CLEAN", label: "No match" }, { value: "PARTIAL", label: "Partial" }, { value: "MATCH", label: "Match" },
+              { value: "CLEAN", label: "No match" }, { value: "PARTIAL", label: "Possible match" }, { value: "MATCH", label: "Match" },
             ]} />
           </div>
 

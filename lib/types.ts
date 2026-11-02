@@ -117,6 +117,8 @@ export interface Route {
     factors: { key: string; label: string; points: number; max: number; detail: string }[];
   } | null;
   note: string | null;
+  /** True when there is no usable pre-war series and no new flow: the score lacks its statistical parts. */
+  no_baseline: boolean;
   threshold: number;
 }
 
@@ -125,6 +127,8 @@ export interface Verdict {
   level: number;
   title: string;
   notes: string[];
+  /** Stop steps for a sanctions match; empty otherwise. */
+  actions: string[];
 }
 
 export interface Assessment {
@@ -257,6 +261,7 @@ export interface BatchRowOut {
   intermediary: string | null;
   route_score: number | null;
   route_band: Band | null;
+  route_no_baseline: boolean | null;
   verdict: VerdictCode;
 }
 
@@ -275,7 +280,7 @@ export interface Memo {
   subject: string;
   verdict: Verdict;
   bluf: string;
-  scores: { route: number; route_band: Band; entity: number; entity_status: EntityStatus };
+  scores: { route: number; route_band: Band; route_no_baseline: boolean; entity: number; entity_status: EntityStatus };
   findings: { severity: "critical" | "high" | "medium" | "info"; area: string; text: string }[];
   legal: string[];
   edd: string[];

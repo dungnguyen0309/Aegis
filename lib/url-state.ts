@@ -46,8 +46,33 @@ export function writeUrl(a: Assessment | null, view: View, section: Section, pus
     if (q.live) p.set("live", "1");
   }
   if (view === "assess" && section !== "overview") p.set("tab", section);
-  const next = `${window.location.pathname}${p.size ? `?${p}` : ""}`;
+  if (view === "radar") {
+    const now = new URLSearchParams(window.location.search);
+    for (const k of RADAR_KEYS) if (now.get(k)) p.set(k, now.get(k)!);
+  }
+  const next = `${window.location.pathname}${p.size ? `?${p.toString().replace(/%2C/g, ",")}` : ""}`;
   if (next === `${window.location.pathname}${window.location.search}`) return;
   if (push) window.history.pushState(null, "", next);
   else window.history.replaceState(window.history.state, "", next);
+}
+
+/** Radar filters, McMaster-style: every selection is in the address, so Back undoes it and a link shares it. */
+export const RADAR_KEYS = ["from", "risk", "tier", "to", "signal", "item"] as const;
+export type RadarKey = (typeof RADAR_KEYS)[number];
+export type RadarFilters = Record<RadarKey, string[]>;
+
+export function readRadar(search: string): RadarFilters {
+  const p = new URLSearchParams(search);
+  return Object.fromEntries(RADAR_KEYS.map((k) => [k, (p.get(k) ?? "").split(",").map((s) => s.trim()).filter(Boolean)])) as RadarFilters;
+}
+
+/** Keeps every other parameter (the view and the open assessment) and adds a history entry; `state` rides along with it. */
+export function writeRadar(f: RadarFilters, state: Record<string, unknown> | null = null) {
+  const p = new URLSearchParams(window.location.search);
+  for (const k of RADAR_KEYS) {
+    if (f[k].length) p.set(k, f[k].join(","));
+    else p.delete(k);
+  }
+  const next = `${window.location.pathname}${p.size ? `?${p.toString().replace(/%2C/g, ",")}` : ""}`;
+  if (next !== `${window.location.pathname}${window.location.search}`) window.history.pushState(state, "", next);
 }

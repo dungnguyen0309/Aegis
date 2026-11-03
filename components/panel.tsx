@@ -27,7 +27,7 @@ export function Panel({
           <h2 className="text-[15px] font-bold leading-tight text-foreground">{title}</h2>
           {subtitle && <p className="mt-0.5 text-[13px] leading-snug text-muted-foreground">{subtitle}</p>}
         </div>
-        {action && <div className="flex shrink-0 flex-wrap items-center gap-2">{action}</div>}
+        {action && <div className="flex max-w-full shrink-0 flex-wrap items-center gap-2">{action}</div>}
       </div>
       <CardContent className={cn("p-4", bodyClassName)}>{children}</CardContent>
     </Card>

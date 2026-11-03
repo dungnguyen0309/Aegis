@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Panel } from "@/components/panel";
 import { Flag } from "@/components/visuals";
+import { useIntent } from "@/lib/use-intent";
 import { cn } from "@/lib/utils";
 import type { AssessRequest, Reference, Weights } from "@/lib/types";
 
@@ -73,15 +74,18 @@ function Field({ label, htmlFor, children, hint }: { label: string; htmlFor?: st
   );
 }
 
-export function QueryPanel({ reference, form, setForm, onRun, loading, active }: {
+export function QueryPanel({ reference, form, setForm, onRun, onPrefetch, loading, active }: {
   reference: Reference | null;
   form: FormState;
   setForm: (f: FormState) => void;
   onRun: (f: FormState) => void;
+  /** Starts an example's assessment while the pointer rests on it. */
+  onPrefetch?: (f: FormState) => void;
   loading: boolean;
   active: number | null;
 }) {
   const set = (patch: Partial<FormState>) => setForm({ ...form, ...patch });
+  const intent = useIntent();
   const hsInfo = reference?.hs_codes.find((h) => h.hs === form.hs);
   const sixDigits = /^\d{6}$/.test(form.hs);
   // HS chapters run from 01 to 97 (77 is reserved); 98/99 are national or "not specified" codes
@@ -101,6 +105,7 @@ export function QueryPanel({ reference, form, setForm, onRun, loading, active }:
         <div className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-1">
           {PRESETS.map((p, i) => (
             <button key={p.label} type="button" onClick={() => { setForm(p.form); onRun(p.form); }} aria-pressed={active === i}
+              {...intent.on(() => onPrefetch?.(p.form))}
               className={cn(
                 "flex items-center gap-2.5 border px-2.5 py-1.5 text-left transition-colors hover:border-ring",
                 active === i ? "border-ring bg-ring/10" : "border-border",

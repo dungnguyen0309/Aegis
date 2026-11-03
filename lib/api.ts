@@ -51,9 +51,33 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+/**
+ * Assessments a hover asked for ahead of the click. The click takes its answer once, so pressing
+ * Run again always asks the server; an answer nobody took within a minute is dropped.
+ */
+const ahead = new Map<string, { at: number; answer: Promise<Assessment> }>();
+const AHEAD_MS = 60_000;
+const postAssess = (req: AssessRequest) => call<Assessment>("/assess", { method: "POST", body: JSON.stringify(req) });
+
 export const api = {
   reference: () => call<Reference>("/reference"),
-  assess: (req: AssessRequest) => call<Assessment>("/assess", { method: "POST", body: JSON.stringify(req) }),
+  assess: (req: AssessRequest) => {
+    const key = JSON.stringify(req);
+    const hit = ahead.get(key);
+    ahead.delete(key);
+    return hit && Date.now() - hit.at < AHEAD_MS ? hit.answer : postAssess(req);
+  },
+  /** Starts an assessment the user is about to open. Live requests are never started ahead. */
+  prefetchAssess: (req: AssessRequest) => {
+    const key = JSON.stringify(req);
+    const hit = ahead.get(key);
+    if (req.live || (hit && Date.now() - hit.at < AHEAD_MS)) return;
+    const answer = postAssess(req);
+    answer.catch(() => { if (ahead.get(key)?.answer === answer) ahead.delete(key); });
+    ahead.delete(key);
+    ahead.set(key, { at: Date.now(), answer });
+    if (ahead.size > 30) ahead.delete(ahead.keys().next().value!); // oldest first
+  },
   memo: (req: AssessRequest) => call<Memo>("/memo", { method: "POST", body: JSON.stringify(req) }),
   radar: (exporter: string) => call<Radar>(`/radar?exporter=${encodeURIComponent(exporter)}`),
   company: (name: string, country: string | null) =>

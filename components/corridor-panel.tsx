@@ -56,7 +56,7 @@ export function Segmented<T extends string>({ value, onChange, options }: {
   value: T; onChange: (v: T) => void; options: { value: T; label: string; icon?: ReactNode }[];
 }) {
   return (
-    <div className="inline-flex border border-border">
+    <div className="inline-flex max-w-full flex-wrap border border-border">
       {options.map((o) => (
         <button key={o.value} type="button" onClick={() => onChange(o.value)} aria-pressed={value === o.value}
           className={cn("flex h-7 items-center gap-1.5 px-2.5 text-[13px]",

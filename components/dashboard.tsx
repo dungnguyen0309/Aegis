@@ -119,16 +119,27 @@ export function Dashboard() {
     run(f);
   };
 
+  // Hovering something that opens an assessment asks for it ahead of the click (the same request `rerun` sends)
+  const prefetch = useCallback((patch: Partial<FormState>) =>
+    api.prefetchAssess(toRequest({ ...lastRun.current, ...patch }, weights)), [weights]);
+  const radarPatch = (hs: string, partner: string, exporter: string): Partial<FormState> =>
+    ({ hs, intermediary: partner, jurisdiction: partner, exporter, live: false });
+  const batchPatch = (r: BatchRowOut): Partial<FormState> => ({
+    company: r.company, jurisdiction: r.country ?? "", ubos: "", hs: r.hs ?? lastRun.current.hs, live: false,
+    intermediary: r.intermediary ?? (r.country && INTERMEDIARY_CODES.includes(r.country) ? r.country : lastRun.current.intermediary),
+  });
+  const prefetchFromRadar = useCallback((hs: string, partner: string, exporter: string) =>
+    prefetch(radarPatch(hs, partner, exporter)), [prefetch]);
+
   const assessFromRadar = (hs: string, partner: string, exporter: string) => {
     setView("assess");
-    rerun({ hs, intermediary: partner, jurisdiction: partner, exporter, live: false });
+    rerun(radarPatch(hs, partner, exporter));
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const assessFromBatch = (r: BatchRowOut) => {
-    const via = r.intermediary ?? (r.country && INTERMEDIARY_CODES.includes(r.country) ? r.country : lastRun.current.intermediary);
     setView("assess");
-    rerun({ company: r.company, jurisdiction: r.country ?? "", ubos: "", hs: r.hs ?? lastRun.current.hs, intermediary: via, live: false });
+    rerun(batchPatch(r));
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -214,7 +225,7 @@ export function Dashboard() {
 
       {view === "radar" && (
         <main className="mx-auto w-full max-w-[1440px] flex-1 px-4 py-5 sm:px-6">
-          <ViewBoundary label="Radar"><RadarView onAssess={assessFromRadar} /></ViewBoundary>
+          <ViewBoundary label="Radar"><RadarView onAssess={assessFromRadar} onPrefetch={prefetchFromRadar} tiers={reference?.tiers} /></ViewBoundary>
         </main>
       )}
 
@@ -226,7 +237,7 @@ export function Dashboard() {
 
       {view === "batch" && (
         <main className="mx-auto w-full max-w-[1440px] flex-1 px-4 py-5 sm:px-6">
-          <ViewBoundary label="Batch screening"><BatchView state={batch} onState={setBatch} onAssess={assessFromBatch} /></ViewBoundary>
+          <ViewBoundary label="Batch screening"><BatchView state={batch} onState={setBatch} onAssess={assessFromBatch} onPrefetch={(r) => prefetch(batchPatch(r))} /></ViewBoundary>
         </main>
       )}
 
@@ -235,7 +246,8 @@ export function Dashboard() {
           {/* Height cap = viewport minus the header and page padding, so the sticky Run footer is on screen from the start */}
           <aside className="order-2 lg:order-none lg:sticky lg:top-4 lg:max-h-[calc(100dvh-6rem)] lg:scroll-pb-28 lg:self-start lg:overflow-y-auto" data-tour="query">
             <QueryPanel reference={reference} form={form} setForm={(f) => { setForm(f); setActive(null); }}
-              onRun={(f) => run(f, weights, true)} loading={loading} active={active} />
+              onRun={(f) => run(f, weights, true)} onPrefetch={(f) => api.prefetchAssess(toRequest(f, weights))}
+              loading={loading} active={active} />
           </aside>
 
           <div className={cn("order-1 min-w-0 space-y-4 transition-opacity lg:order-none", loading && a && "opacity-60")}>

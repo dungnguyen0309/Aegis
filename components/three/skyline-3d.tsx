@@ -106,10 +106,12 @@ function floorTexture(rows: Row[], partners: Radar["partners"], byTier: boolean,
   return { tex, w: W / PX, d: H / PX };
 }
 
-export function Skyline3D({ data, rows, byTier, onHover, onAssess }: {
+export function Skyline3D({ data, rows, byTier, on, onHover, onAssess }: {
   data: Radar;
   rows: Row[];
   byTier: boolean;
+  /** Corridors that match the filters ("hs-partner"); the rest lie flat and pale. Null: all match. */
+  on: Set<string> | null;
   onHover: (c: SkylineCell) => void;
   onAssess: (hs: string, partner: string) => void;
 }) {
@@ -155,10 +157,11 @@ export function Skyline3D({ data, rows, byTier, onHover, onAssess }: {
     const mat = new THREE.Matrix4();
     rows.forEach((r, i) => r.cells.forEach((c, j) => {
       const k = i * m + j;
-      heights[k] = height(c.score);
+      const match = !on || on.has(`${r.hs}-${c.partner}`);
+      heights[k] = match ? height(c.score) : 0.02;
       mat.makeScale(1, heights[k], 1).setPosition(x0 + (i + 0.5) * CELL, 0, z0 + (j + 0.5) * CELL_Z);
       mesh.setMatrixAt(k, mat);
-      colors[k] = new THREE.Color().lerpColors(card, crit, Math.max(0.12, c.score / 100)).convertSRGBToLinear();
+      colors[k] = new THREE.Color().lerpColors(card, crit, match ? Math.max(0.12, c.score / 100) : 0.04).convertSRGBToLinear();
       mesh.setColorAt(k, colors[k]);
     }));
     g.add(mesh);
@@ -197,7 +200,7 @@ export function Skyline3D({ data, rows, byTier, onHover, onAssess }: {
       disposeTree(g);
       bars.current = null;
     };
-  }, [ready, stageRef, data, rows, byTier, theme, reduce]);
+  }, [ready, stageRef, data, rows, byTier, on, theme, reduce]);
 
   const m = data.partners.length;
   const cellAt = (id: number): SkylineCell => {

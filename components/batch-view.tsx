@@ -12,6 +12,7 @@ import { StatusBadge } from "@/components/status";
 import { CompanyMark, Flag } from "@/components/visuals";
 import { api } from "@/lib/api";
 import { entityLabel, entityTone, verdictSolid, verdictTone, routeStatus } from "@/lib/format";
+import { useIntent } from "@/lib/use-intent";
 import { cn } from "@/lib/utils";
 import type { BatchResult, BatchRowIn, BatchRowOut, VerdictCode } from "@/lib/types";
 
@@ -103,11 +104,13 @@ export interface BatchState {
   result: BatchResult | null;
 }
 
-export function BatchView({ state, onState, onAssess }: {
+export function BatchView({ state, onState, onAssess, onPrefetch }: {
   state: BatchState;
   onState: Dispatch<SetStateAction<BatchState>>;
   onAssess?: (r: BatchRowOut) => void;
+  onPrefetch?: (r: BatchRowOut) => void;
 }) {
+  const intent = useIntent();
   const { text, result } = state;
   const setText = (t: string) => onState((s) => ({ ...s, text: t }));
   const setResult = (r: BatchResult | null) => onState((s) => ({ ...s, result: r }));
@@ -217,7 +220,8 @@ export function BatchView({ state, onState, onAssess }: {
                   <dt className="text-muted-foreground">Route risk</dt><dd><RouteCell r={r} /></dd>
                 </dl>
                 {onAssess && (
-                  <Button size="xs" variant="outline" onClick={() => onAssess(r)} aria-label={`Open the assessment of ${r.company}`}>
+                  <Button size="xs" variant="outline" onClick={() => onAssess(r)} aria-label={`Open the assessment of ${r.company}`}
+                    {...intent.on(() => onPrefetch?.(r))}>
                     Assess <ArrowRightIcon />
                   </Button>
                 )}
@@ -252,7 +256,8 @@ export function BatchView({ state, onState, onAssess }: {
                     <TableCell><RouteCell r={r} /></TableCell>
                     {onAssess && (
                       <TableCell className="text-right">
-                        <Button size="xs" variant="ghost" onClick={() => onAssess(r)} aria-label={`Open the assessment of ${r.company}`}>
+                        <Button size="xs" variant="ghost" onClick={() => onAssess(r)} aria-label={`Open the assessment of ${r.company}`}
+                          {...intent.on(() => onPrefetch?.(r))}>
                           Assess <ArrowRightIcon />
                         </Button>
                       </TableCell>

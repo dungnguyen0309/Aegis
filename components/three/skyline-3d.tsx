@@ -232,13 +232,13 @@ export function Skyline3D({ data, rows, byTier, on, onHover, onAssess }: {
           <div className="text-muted-foreground">{c.description}</div>
           <div className="mt-1 flex items-center gap-2">
             <StatusBadge tone={bandTone[c.band]}>{c.band}</StatusBadge>
-            <span className="text-[15px] font-bold">{c.score}</span><span className="text-muted-foreground">/ 100</span>
+            <span className="text-[17px] font-bold">{c.score}</span><span className="text-muted-foreground">/ 100</span>
           </div>
           <div className="mt-1">
-            {c.multiplier !== null ? `${times(c.multiplier)} the 2017–21 baseline` : c.emergent ? "New flow since 2022" : "No baseline"}
-            {c.ytd !== null && <> · YTD {times(c.ytd)}</>}
+            {c.multiplier !== null ? `Exports vs pre-war: ${times(c.multiplier)}` : c.emergent ? "Exports vs pre-war: New flow" : "No baseline"}
           </div>
-          <div className="text-muted-foreground">{data.years.at(-1)}: {money(c.latest)} · click to assess</div>
+          {c.ytd !== null && data.latest_month && <div>{data.latest_month.slice(0, 4)} so far vs 2021: {times(c.ytd)}</div>}
+          <div className="text-muted-foreground">{data.years.at(-1)} exports: {money(c.latest)}</div>
         </>
       )));
     },
@@ -266,11 +266,11 @@ export function Skyline3D({ data, rows, byTier, on, onHover, onAssess }: {
 
   return (
     <Frame3D hostRef={hostRef} stageRef={stageRef} failed={failed} tip={tip} className="h-[280px] bg-card sm:h-[460px]"
-      label={`3D skyline of route risk scores for ${rows.length} items and ${m} countries, exporter ${data.exporter_name}`}
-      hint="Drag to rotate · right-drag to pan · Ctrl + scroll to zoom"
+      label={`3D skyline of route risk for ${rows.length} items × ${m} transit countries, exporter ${data.exporter_name}`}
+      hint="Drag to rotate · click a bar to assess · Ctrl + scroll to zoom"
       tools={<>
         <ToolButton label="Perspective view" active={!top} onClick={() => view(false)}><ArrowsOutIcon className="size-3.5" /> 3D</ToolButton>
-        <ToolButton label="Top view (like the heatmap)" active={top} onClick={() => view(true)}><EyeIcon className="size-3.5" /> Top</ToolButton>
+        <ToolButton label="Top view" active={top} onClick={() => view(true)}><EyeIcon className="size-3.5" /> Top</ToolButton>
       </>} />
   );
 }

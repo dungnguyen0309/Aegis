@@ -23,7 +23,7 @@ function Brand() {
       </svg>
       <div className="leading-none">
         <div className="text-[19px] font-bold">Aegis</div>
-        <div className="mt-0.5 hidden text-[12px] leading-snug text-muted-foreground xl:block">
+        <div className="mt-0.5 hidden text-[14px] leading-snug text-muted-foreground xl:block">
           Open-Source Trade Intelligence &amp; Dual-Use Sanctions Radar
         </div>
       </div>
@@ -55,14 +55,14 @@ export function AppHeader({ reference, view, onView, onTour }: {
           {NAV.map(({ view: v, label, short }) => (
             <button key={v} type="button" onClick={() => onView(v)} data-tour={v === "radar" ? "nav-radar" : undefined}
               aria-current={view === v ? "page" : undefined}
-              className={cn("flex shrink-0 items-center border-b-2 px-2.5 py-2.5 text-[15px] transition-colors sm:px-3",
+              className={cn("flex shrink-0 items-center border-b-2 px-2.5 py-2.5 text-[16px] transition-colors sm:px-3",
                 view === v ? "border-foreground font-bold text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}>
               <span className="sm:hidden">{short}</span><span className="max-sm:hidden">{label}</span>
             </button>
           ))}
         </nav>
         <div className="ml-auto flex h-14 items-center gap-1.5">
-          <Button variant="ghost" size="sm" onClick={onTour}><BinocularsIcon /> <span className="max-sm:sr-only">Tour</span></Button>
+          <Button variant="ghost" size="sm" onClick={onTour}><BinocularsIcon /> Tour</Button>
           <MethodologyDialog reference={reference} />
           <Button variant="ghost" size="icon-sm" onClick={() => setTheme(dark ? "light" : "dark")}
             aria-label={dark ? "Switch to light theme" : "Switch to dark theme"} title={dark ? "Light theme" : "Dark theme"}>

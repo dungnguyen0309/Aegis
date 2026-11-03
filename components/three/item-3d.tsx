@@ -162,13 +162,13 @@ export function Item3D({ hs, description }: { hs: string; description: string | 
   return (
     <div>
       <Frame3D hostRef={hostRef} stageRef={stageRef} failed={failed} tip={tip} className="h-[300px] bg-card"
-        label={`Rotatable 3D model of HS ${hs}${description ? `, ${description}` : ""}`}
-        hint="Drag to turn · hover a part to name it"
+        label={`3D model of HS ${hs}${description ? `, ${description}` : ""}`}
+        hint="Drag to rotate · hover a part to name it"
         overlay={!shown && !failed && (
           <div className="pointer-events-none absolute inset-0 grid place-items-center text-sm text-muted-foreground">Loading model…</div>
         )}
         tools={!reduce && (
-          <ToolButton label={spinning ? "Stop turning" : "Turn automatically"} onClick={() => setSpinning(!spinning)}>
+          <ToolButton label={spinning ? "Stop rotating" : "Rotate automatically"} onClick={() => setSpinning(!spinning)}>
             {spinning ? <PauseIcon className="size-3.5" /> : <PlayIcon className="size-3.5" />}
           </ToolButton>
         )} />
@@ -177,7 +177,7 @@ export function Item3D({ hs, description }: { hs: string; description: string | 
           {parts.map((p) => (
             <button key={p} type="button" onMouseEnter={() => setHovered(p)} onMouseLeave={() => setHovered(null)}
               onFocus={() => setHovered(p)} onBlur={() => setHovered(null)}
-              className={cn("border px-2 py-0.5 text-[12px] transition-colors", hovered === p ? "border-ring bg-ring/10" : "border-border")}>
+              className={cn("border px-2 py-0.5 text-[14px] transition-colors", hovered === p ? "border-ring bg-ring/10" : "border-border")}>
               {p}
             </button>
           ))}

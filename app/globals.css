@@ -34,8 +34,10 @@
   --color-series-2: var(--series-2);
   --color-faint: var(--faint-foreground);
   --color-warning-ink: var(--warning-ink);
-  --text-xs: 0.8125rem;
-  --text-xs--line-height: calc(1.15 / 0.8125);
+  --text-xs: 0.875rem;
+  --text-xs--line-height: 1.4;
+  --text-sm: 0.9375rem;
+  --text-sm--line-height: 1.45;
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -119,8 +121,8 @@
   --accent: #1d232c;
   --accent-foreground: #e7e9ec;
   --destructive: #f07070;
-  --border: rgba(255, 255, 255, 0.1);
-  --input: rgba(255, 255, 255, 0.16);
+  --border: #2a2e35; /* white at 10% on the card, made opaque */
+  --input: #393d44;
   --ring: #3987e5;
   --warning-ink: #f2c14e;
   --series-1: #3987e5;

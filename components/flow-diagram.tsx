@@ -32,7 +32,7 @@ export function FlowDiagram({ s, exporterName, hs, highlight }: {
   s: Sankey | null; exporterName: string; hs: string; highlight: string;
 }) {
   const [hover, setHover] = useState<string | null>(null);
-  if (!s) return <p className="py-8 text-center text-sm text-muted-foreground">Flow data covers Germany as the exporter and the listed items.</p>;
+  if (!s) return <p className="py-8 text-center text-sm text-muted-foreground">Flow data covers only Germany as exporter and items on the EU battlefield item list.</p>;
   const rows = s.links
     .filter((l) => l.from_exporter + (l.to_russia ?? 0) > 10_000)
     .sort((a, b) => b.from_exporter + (b.to_russia ?? 0) - (a.from_exporter + (a.to_russia ?? 0)));
@@ -54,9 +54,9 @@ export function FlowDiagram({ s, exporterName, hs, highlight }: {
   return (
     <div>
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img"
-        aria-label={`Flows of HS ${hs}: ${exporterName} to intermediaries and on to Russia, ${s.year}`}>
+        aria-label={`Flows of HS ${hs}: ${exporterName} to transit countries and on to Russia, ${s.year}`}>
         <text x={X_LEFT - BAR} y={18} fontSize={13} fontWeight={700} fill="var(--foreground)">{exporterName}</text>
-        <text x={X_MID} y={18} fontSize={13} fontWeight={700} fill="var(--foreground)" textAnchor="middle">Intermediaries</text>
+        <text x={X_MID} y={18} fontSize={13} fontWeight={700} fill="var(--foreground)" textAnchor="middle">Transit countries</text>
         <text x={X_RIGHT + BAR} y={18} fontSize={13} fontWeight={700} fill="var(--foreground)" textAnchor="end">Russia</text>
 
         {layout.map(({ r, wi, wo, ym, yl: l, yr: rr }) => {
@@ -74,7 +74,7 @@ export function FlowDiagram({ s, exporterName, hs, highlight }: {
                 {regionName(r.partner).replace("United Arab Emirates", "UAE")}
               </text>
               <text x={X_MID + BOX - 8} y={ym + 4} fontSize={11.5} textAnchor="end" fill="var(--foreground)" fontWeight={700}>
-                {r.reported ? money(r.to_russia ?? 0, "USD") : "n/r"}
+                {r.reported ? money(r.to_russia ?? 0, "USD") : "—"}
               </text>
               <title>{`${regionName(r.partner)}: ${money(r.from_exporter, "USD", 2)} from ${exporterName}; ${r.reported ? money(r.to_russia ?? 0, "USD", 2) : "not reported"} to Russia (all origins)`}</title>
             </g>
@@ -86,9 +86,8 @@ export function FlowDiagram({ s, exporterName, hs, highlight }: {
         <rect x={X_RIGHT} y={TOP} width={BAR} height={rightH} rx={2} fill="var(--series-2)" />
         <text x={X_RIGHT + BAR + 6} y={TOP + rightH / 2 + 4} fontSize={12} fill="var(--foreground)">{money(totalOut, "USD")}</text>
       </svg>
-      <p className="mt-1 text-[12px] text-muted-foreground">
-        {s.year}, USD, UN Comtrade. Left: {exporterName}&apos;s exports of HS {hs} to each country. Right: each
-        country&apos;s exports of the item to Russia, from any origin. Band widths use a square-root scale.
+      <p className="mt-1 text-[14px] text-muted-foreground">
+        {s.year} · USD · UN Comtrade. Right: exports to Russia from any origin. Band widths: square-root scale.
       </p>
     </div>
   );

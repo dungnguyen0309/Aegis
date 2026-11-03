@@ -131,9 +131,9 @@ def analyse(series: dict, classification: dict, partner: str,
     default = _weighted(parts, WEIGHTS)
 
     if reclassified:
-        note = "HS 2022 subheading: no comparable pre-2022 baseline, so statistical components are excluded."
+        note = "HS 2022 subheading with no pre-war equivalent: statistical parts left out."
     elif emergent:
-        note = "No exports in the 2017-2021 baseline: any post-2022 flow is a new trade relationship."
+        note = "No exports pre-war (2017–21): any flow since 2022 is new."
     elif not has_baseline:
         note = "Too little pre-war trade for a reliable comparison."
     else:

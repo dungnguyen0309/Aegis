@@ -16,27 +16,25 @@ import type { Classification, Entity, Route, Weights } from "@/lib/types";
 export function LegalPanel({ c }: { c: Classification }) {
   const tone = c.chpl ? (c.tier === "1" || c.tier === "2" ? "critical" : "serious") : c.status === "NOT LISTED" ? "good" : "warning";
   return (
-    <Panel title="Export control classification" subtitle="EU battlefield item list and dual-use rules." tour="legal" className="h-full">
+    <Panel title="Export control classification" tour="legal" className="h-full">
       <div className="flex items-start justify-between gap-3">
         <ProductArt hs={c.hs} size={64} />
         <div className="min-w-0 flex-1">
           <div className="font-mono text-2xl font-bold tracking-wide tabular">{c.hs.slice(0, 4)}.{c.hs.slice(4)}</div>
-          <p className="mt-1 font-sans text-[13px] leading-snug text-foreground/90">
-            {c.description ?? "Not on the Common High Priority list"}
-          </p>
+          {c.description && <p className="mt-1 font-sans text-[15px] leading-snug text-foreground/90">{c.description}</p>}
         </div>
-        <StatusBadge tone={tone}>{c.chpl ? `Tier ${c.tier}` : c.status}</StatusBadge>
+        <StatusBadge tone={tone}>{c.chpl ? `Tier ${c.tier}` : c.status === "NOT LISTED" ? "Not on item list" : sentenceCase(c.status)}</StatusBadge>
       </div>
-      {c.tier_label && <p className="mt-2 text-[12px] text-muted-foreground">{c.tier_label}</p>}
+      {c.tier_label && <p className="mt-2 text-[14px] text-muted-foreground">{c.tier_label}</p>}
       {c.annex_i_indicative.length > 0 && (
         <div className="mt-3 flex flex-wrap items-center gap-1.5">
-          <span className="text-[12px] text-muted-foreground">Possible dual-use entries (Annex I)</span>
+          <span className="text-[14px] text-muted-foreground">Annex I entries (possible)</span>
           {c.annex_i_indicative.map((x) => (
-            <Badge key={x} variant="outline" className="text-[12px]">{x}</Badge>
+            <Badge key={x} variant="outline" className="text-[14px]">{x}</Badge>
           ))}
         </div>
       )}
-      <ul className="mt-3 space-y-1.5 border-t border-border pt-3 font-sans text-[12px] leading-snug text-foreground/85">
+      <ul className="mt-3 space-y-1.5 border-t border-border pt-3 font-sans text-[14px] leading-snug text-foreground/85">
         {c.obligations.map((o) => (
           <li key={o} className="flex gap-2">
             <span className="text-faint">—</span>
@@ -44,7 +42,7 @@ export function LegalPanel({ c }: { c: Classification }) {
           </li>
         ))}
       </ul>
-      <p className="mt-3 text-[12px] text-faint">{c.source}</p>
+      <p className="mt-3 text-[14px] text-faint">{c.source}</p>
     </Panel>
   );
 }
@@ -62,10 +60,13 @@ function SimilarityBar({ score }: { score: number }) {
   );
 }
 
+/** Display names for the screening roles the API sends. */
+const ROLE: Record<string, string> = { Company: "Buyer", "UBO / director": "Owner or director" };
+
 export function EntityPanel({ e, company, jurisdiction }: { e: Entity; company: string; jurisdiction: string | null }) {
   return (
-    <Panel title="Sanctions screening" subtitle={`The buyer and its owners, checked against ${e.lists.join(", ")}. ${SCREENING_RULE}`} tour="entity"
-      action={<span className="text-[12px] text-faint">{e.source}</span>}>
+    <Panel title="Sanctions screening" subtitle={`EU, US and UN lists. ${SCREENING_RULE}`} tour="entity"
+      action={<span className="text-[14px] text-faint">{e.source}</span>}>
       <div className="space-y-4">
         {e.subjects.map((s) => (
           <div key={s.role + s.name}>
@@ -74,7 +75,7 @@ export function EntityPanel({ e, company, jurisdiction }: { e: Entity; company: 
                 {s.role === "Company" ? <CompanyMark name={s.name} size={30} flagged={s.status !== "CLEAN"} />
                   : <UserCircleIcon weight="duotone" className="size-[30px] shrink-0 text-muted-foreground" />}
                 <div className="min-w-0">
-                  <div className="text-[12px] text-faint">{s.role}</div>
+                  <div className="text-[14px] text-faint">{ROLE[s.role] ?? s.role}</div>
                   <div className="truncate text-sm font-bold">{s.name}</div>
                 </div>
               </div>
@@ -83,7 +84,7 @@ export function EntityPanel({ e, company, jurisdiction }: { e: Entity; company: 
               </StatusBadge>
             </div>
             {s.matches.length > 0 ? (
-              <Table className="mt-2 min-w-[620px] table-fixed text-[12px]">
+              <Table className="mt-2 min-w-[620px] table-fixed text-[14px]">
                 {/* fixed columns, so the company's and each owner's tables line up */}
                 <colgroup>
                   <col className="w-[44%]" /><col className="w-[16%]" /><col className="w-[10%]" /><col className="w-[12%]" /><col className="w-[18%]" />
@@ -109,13 +110,13 @@ export function EntityPanel({ e, company, jurisdiction }: { e: Entity; company: 
                               className="inline-flex items-center gap-1 hover:text-series-1 hover:underline">
                               {m.name} <ArrowSquareOutIcon className="size-3 shrink-0 text-faint" />
                             </a>
-                            {m.matched_on && <div className="text-[12px] text-faint">matched: {m.matched_on}</div>}
+                            {m.matched_on && <div className="text-[14px] text-faint">Matched on {m.matched_on}</div>}
                           </div>
                         </div>
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
-                          {m.lists.map((l) => <Badge key={l} variant="outline" className="text-[12px]">{l}</Badge>)}
+                          {m.lists.map((l) => <Badge key={l} variant="outline" className="text-[14px]">{l}</Badge>)}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -133,13 +134,13 @@ export function EntityPanel({ e, company, jurisdiction }: { e: Entity; company: 
                 </TableBody>
               </Table>
             ) : (
-              <p className="mt-1.5 text-[12px] text-muted-foreground">
-                No listed name at 70% similarity or more.
+              <p className="mt-1.5 text-[14px] text-muted-foreground">
+                No names reached 70% similarity.
               </p>
             )}
           </div>
         ))}
-        {e.warning && <p className="text-[12px] text-warning-ink">{e.warning}</p>}
+        {e.warning && <p className="text-[14px] text-warning-ink">{e.warning}</p>}
         <RegistryLookup name={company} country={jurisdiction} />
       </div>
     </Panel>
@@ -171,8 +172,8 @@ export function ScoreBreakdown({ r, defaults, onWeights }: {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-[12px] text-muted-foreground">
-          {r.custom_weights ? "Custom weights" : "Default weights"} · score {r.score}
+        <p className="text-[14px] text-muted-foreground">
+          {r.custom_weights ? "Custom weights" : "Default weights"} · Route risk {r.score}
         </p>
         <div className="flex gap-1.5">
           {r.custom_weights && <Button size="xs" variant="ghost" onClick={reset}>Reset</Button>}
@@ -187,7 +188,7 @@ export function ScoreBreakdown({ r, defaults, onWeights }: {
         const share = na ? 0 : (c.points! / c.weight) * 100;
         return (
           <div key={c.key}>
-            <div className="mb-1 flex justify-between text-[12px]">
+            <div className="mb-1 flex justify-between text-[14px]">
               <span className={na ? "text-faint" : "text-muted-foreground"}>{componentLabel[c.key] ?? c.key}</span>
               <span className="font-mono tabular">
                 {na ? <span className="text-faint">n/a</span> : <span className="text-foreground">{c.points!.toFixed(1)}</span>}
@@ -207,7 +208,7 @@ export function ScoreBreakdown({ r, defaults, onWeights }: {
         );
       })}
 
-      <div className="space-y-1 border-t border-border pt-3 text-[12px]">
+      <div className="space-y-1 border-t border-border pt-3 text-[14px]">
         <div className="flex items-center justify-between gap-2">
           <span className="text-muted-foreground">With equal weights</span>
           <span className="inline-flex items-center gap-1.5 font-mono tabular">
@@ -224,18 +225,18 @@ export function ScoreBreakdown({ r, defaults, onWeights }: {
             </span>
           </div>
         )}
-        <p className="text-[12px] text-faint">
-          {sens.equal.band === r.band ? "Same band with equal weights." : "The band changes with equal weights, so read it with care."}
+        <p className="text-[14px] text-faint">
+          {sens.equal.band === r.band ? "Same band with equal weights." : "Band changes with equal weights; read with care."}
         </p>
       </div>
 
       {jp && (
         <div className="border-t border-border pt-3">
-          <div className="mb-1.5 flex justify-between text-[12px]">
+          <div className="mb-1.5 flex justify-between text-[14px]">
             <span className="flex items-center gap-1.5 font-bold"><Flag code={jp.iso2} /> {jp.name} exposure</span>
             <span className="font-mono tabular">{jp.exposure.toFixed(1)} / {jp.max}</span>
           </div>
-          <ul className="space-y-0.5 text-[12px] text-muted-foreground">
+          <ul className="space-y-0.5 text-[14px] text-muted-foreground">
             {jp.factors.map((f) => (
               <li key={f.key} className="flex justify-between gap-3">
                 <span>{f.label} <span className="text-faint">({f.detail})</span></span>

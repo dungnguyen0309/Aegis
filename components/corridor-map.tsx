@@ -191,7 +191,7 @@ export function CorridorMap({ exporter, exporterName, intermediary, intermediary
 
   return (
     <div>
-      <div className="overflow-hidden rounded-sm ring-1 ring-border">
+      <div className="overflow-hidden rounded-sm border border-border">
         <svg viewBox={`0 0 ${W} ${H}`} className="block w-full" role="img"
           aria-label={`Map of freight corridors from ${exporterName} to ${intermediaryName} and on to Russia`}>
           <rect width={W} height={H} fill="var(--map-ocean)" />
@@ -209,7 +209,7 @@ export function CorridorMap({ exporter, exporterName, intermediary, intermediary
             <RouteLine key={r.id} r={r} active={false} hover={false} scale={inboundScale(r)} dim={flows && r.leg === "inbound" ? 0.45 : 0.22} />
           ))}
           {direct && (
-            <path d={direct} fill="none" stroke="var(--series-2)" strokeLinecap="round" opacity={0.75}
+            <path d={direct} fill="none" stroke={LEG_COLOR.onward} strokeLinecap="round" opacity={0.75}
               strokeWidth={0.6 + 3.6 * Math.sqrt(directValue / peak) * 2.2} strokeDasharray="10 6">
               <title>{`Direct exports to Russia, ${years[yi]}: ${money(directValue, flows?.unit ?? "EUR")}`}</title>
             </path>
@@ -230,7 +230,7 @@ export function CorridorMap({ exporter, exporterName, intermediary, intermediary
             <Moving key={r.id} r={r} flip={r.leg === "onward"} />
           ))}
 
-          <g fontSize={10.5} fill="var(--map-label)" stroke="var(--map-halo)" strokeWidth={2.6} paintOrder="stroke" strokeLinejoin="round">
+          <g fontSize={12} fill="var(--map-label)" stroke="var(--map-halo)" strokeWidth={2.6} paintOrder="stroke" strokeLinejoin="round">
             {[...stops.entries()].map(([name, [x, y]]) => (
               <g key={name}>
                 <circle cx={x} cy={y} r={2.6} fill="var(--card)" stroke="var(--map-label)" strokeWidth={1} />
@@ -251,7 +251,7 @@ export function CorridorMap({ exporter, exporterName, intermediary, intermediary
               <g key={code} className="cursor-pointer" onClick={() => onSelect(code)} role="button" tabIndex={0}
                 onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelect(code); } }}
                 aria-label={`Assess ${regionName(code)}`}>
-                <title>{`${regionName(code)}: click to assess this corridor`}</title>
+                <title>{regionName(code)}</title>
                 <rect x={x - 1.5} y={y - 1.5} width={w + 3} height={h + 3} rx={2} fill="#fff"
                   stroke={isActive ? "var(--foreground)" : "var(--chart-axis)"} strokeWidth={isActive ? 1.4 : 0.8} />
                 <image href={`/flags/${code.toLowerCase()}.svg`} x={x} y={y} width={w} height={h} preserveAspectRatio="none" />

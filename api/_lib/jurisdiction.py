@@ -44,7 +44,7 @@ def profile(iso2: str) -> dict | None:
         parts.append("EAEU customs union with Russia (no customs border)")
     if facts["land_border"]:
         parts.append("land border with Russia")
-    parts.append(f"{n} organisations based here are designated by the EU or US under Russia/Belarus programmes")
+    parts.append(f"{n} organisations based here designated by the EU or US under Russia/Belarus programmes")
     rationale = "; ".join(parts)
     return {
         "iso2": iso2,

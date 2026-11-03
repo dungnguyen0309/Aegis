@@ -160,11 +160,11 @@ async def get_series(exporter: str, partner: str, hs: str, live: bool) -> dict:
             errors.append(type(exc).__name__)
     if bundle:
         return {**bundle, "mode": "fallback",
-                "warning": f"Live sources failed ({', '.join(errors)}); showing bundled data."}
+                "warning": f"Live sources failed ({', '.join(errors)}); showing snapshot data."}
     return {
         "years": [], "values": [], "russia": [], "unit": "EUR", "mode": "unavailable",
         "source": "Eurostat / UN Comtrade", "retrieved": None,
-        "warning": "No bundled data for this combination and the live sources failed. Try again later.",
+        "warning": "No snapshot data for this combination and the live sources failed. Try again later.",
     }
 
 

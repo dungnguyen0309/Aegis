@@ -58,13 +58,15 @@ export const entityLabel: Record<EntityStatus, string> = {
 };
 
 /** The similarity rule, stated once: the thresholds in api/_lib/sanctions.py (MATCH_AT, PARTIAL_AT, listing cut-off). */
-export const SCREENING_RULE = "Match from 93% similarity, possible match from 80%. Names from 70% are listed for review.";
+export const SCREENING_RULE = "Match from 93% similarity, possible match from 80%, review from 70%.";
 
 export const verdictTone: Record<VerdictCode, Tone> = {
+  // One scale, strongest first: solid red, solid orange, orange outline, yellow outline, grey, green
   STOP: "critical",
   HOLD: "serious",
-  "RED FLAG": "critical",
-  ELEVATED: "serious",
+  "RED FLAG": "serious",
+  ELEVATED: "warning",
+  "NAME ONLY": "neutral",
   STANDARD: "good",
 };
 
@@ -81,11 +83,11 @@ export const toneVar: Record<Tone, string> = {
 
 export const componentLabel: Record<string, string> = {
   anomaly: "Unusual years",
-  surge: "Surge vs baseline",
-  materiality: "Materiality (value)",
+  surge: "Exports vs pre-war",
+  materiality: "Excess value",
   criticality: "Item criticality",
-  jurisdiction: "Jurisdiction exposure",
-  displacement: "Russia displacement",
+  jurisdiction: "Transit country exposure",
+  displacement: "Fall in direct exports to Russia",
 };
 
 /** Round, evenly spaced axis ticks from 0 to just above `max` (about `count` intervals). */

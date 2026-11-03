@@ -214,8 +214,21 @@ def test_batch_screening():
     by = {r["company"]: r for r in out["rows"]}
     assert by["OOO Радиоавтоматика"]["verdict"] == "STOP"
     assert by["Northwind Components LLP"]["verdict"] == "RED FLAG" and by["Northwind Components LLP"]["route_band"] == "CRITICAL"
-    assert by["Tailspin Toys GmbH"]["chpl_tier"] is None and by["Tailspin Toys GmbH"]["verdict"] == "STANDARD"
+    # no covered transit country: only the name was screened, never a green Standard
+    assert by["Tailspin Toys GmbH"]["chpl_tier"] is None and by["Tailspin Toys GmbH"]["verdict"] == "NAME ONLY"
+    assert "transit" in by["Tailspin Toys GmbH"]["issues"][0]
+    assert by["Northwind Components LLP"]["issues"] == []
     assert out["rows"][0]["verdict"] == "STOP"  # sorted by severity
+
+
+def test_batch_flags_bad_rows():
+    bad = client.post("/api/batch", json={"rows": [{"company": "Acme", "country": "ZZ", "hs": "12", "intermediary": "KZ"}]}).json()
+    row = bad["rows"][0]
+    assert row["verdict"] == "NAME ONLY" and row["country"] is None and row["hs"] is None
+    assert len(row["issues"]) == 2 and "ZZ" in row["issues"][0] and "six digits" in row["issues"][1]
+    # a name with nothing else is screened by name only, and says why
+    plain = client.post("/api/batch", json={"rows": [{"company": "Plain Trading Co", "country": "DE"}]}).json()["rows"][0]
+    assert plain["verdict"] == "NAME ONLY" and plain["issues"] == ["No HS code; item and route not checked."]
 
 
 def test_registry_flags_new_shell(monkeypatch):

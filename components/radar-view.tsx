@@ -31,7 +31,7 @@ type Prefetch = (hs: string, partner: string) => void;
 const FACETS: Facet[] = ["risk", "tier", "to", "signal", "item"];
 const BANDS: Band[] = ["CRITICAL", "HIGH", "MODERATE", "LOW"];
 const SIGNALS: { key: string; label: string; test: (c: RadarCell) => boolean }[] = [
-  { key: "fell", label: "Russia exports fell", test: (c) => c.diversion },
+  { key: "fell", label: "Direct exports to Russia fell", test: (c) => c.diversion },
   { key: "new", label: "New flow since 2022", test: (c) => c.emergent },
   { key: "x2", label: "At least 2× pre-war", test: (c) => (c.multiplier ?? 0) >= 2 },
 ];
@@ -83,11 +83,11 @@ function FacetGroup({ title, options, selected, onToggle, search }: {
   const list = q.trim() ? options.filter((o) => o.text.toLowerCase().includes(q.trim().toLowerCase())) : options;
   return (
     <div role="group" aria-labelledby={id} className="border-t border-border py-3">
-      <h3 id={id} className="mb-1.5 text-[13px] font-bold">{title}</h3>
+      <h3 id={id} className="mb-1.5 text-[17px] font-bold">{title}</h3>
       {search && (
         <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search code or name"
           aria-label={`Search ${title.toLowerCase()}`}
-          className="mb-1.5 h-7 w-full border border-input bg-transparent px-2 text-[13px] outline-none placeholder:text-muted-foreground focus-visible:border-ring" />
+          className="mb-1.5 h-7 w-full border border-input bg-transparent px-2 text-[15px] outline-none placeholder:text-muted-foreground focus-visible:border-ring" />
       )}
       <ul className={cn("space-y-0.5", search && "max-h-56 overflow-y-auto pr-1")}>
         {list.map((o) => {
@@ -95,15 +95,15 @@ function FacetGroup({ title, options, selected, onToggle, search }: {
           const none = o.n === 0 && !checked;
           return (
             <li key={o.value}>
-              <label className={cn("flex items-center gap-2 py-0.5 text-[13px] leading-tight", none ? "text-faint" : "cursor-pointer hover:text-foreground")}>
+              <label className={cn("flex items-center gap-2 py-0.5 text-[15px] leading-tight", none ? "text-faint" : "cursor-pointer hover:text-foreground")}>
                 <input type="checkbox" checked={checked} disabled={none} onChange={() => onToggle(o.value)} className="size-3.5 shrink-0 accent-foreground" />
                 <span className="flex min-w-0 flex-1 items-center gap-1.5" title={o.text}>{o.label}</span>
-                <span className="shrink-0 text-[12px] tabular text-faint">{o.n}</span>
+                <span className="shrink-0 text-[14px] tabular text-faint">{o.n}</span>
               </label>
             </li>
           );
         })}
-        {list.length === 0 && <li className="text-[12px] text-faint">Nothing matches “{q.trim()}”.</li>}
+        {list.length === 0 && <li className="text-[14px] text-faint">{`No matches for "${q.trim()}"`}</li>}
       </ul>
     </div>
   );
@@ -128,7 +128,7 @@ function Catalogue({ rows, tiers, shown, onPick }: {
     <div className="space-y-5">
       {[...groups].map(([tier, items]) => (
         <section key={tier} aria-label={`Tier ${tier}`}>
-          <h3 className="mb-2 text-[14px] font-bold">
+          <h3 className="mb-2 text-[16px] font-bold">
             Tier {tier} {tiers?.[tier] && <span className="font-normal text-muted-foreground">{tiers[tier]}</span>}
           </h3>
           <ul className="grid border-l border-t border-border sm:grid-cols-2 2xl:grid-cols-3">
@@ -138,13 +138,13 @@ function Catalogue({ rows, tiers, shown, onPick }: {
                 <li key={r.hs} className="border-b border-r border-border">
                   <button type="button" onClick={() => onPick(r.hs)}
                     className="flex h-full w-full items-start gap-3 p-3 text-left transition-colors hover:bg-muted/60 focus-visible:bg-muted/60 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring">
-                    <ProductArt hs={r.hs} size={48} />
+                    <ProductArt hs={r.hs} size={44} />
                     <span className="min-w-0">
-                      <span className="block text-[13px] font-bold tabular">{r.hs}</span>
-                      <span className="line-clamp-2 text-[13px] leading-snug">{r.description}</span>
-                      <span className="mt-1 flex items-center gap-1.5 text-[12px] tabular text-muted-foreground">
+                      <span className="block text-[17px] font-bold tabular">{r.hs}</span>
+                      <span className="line-clamp-2 text-[15px] leading-snug">{r.description}</span>
+                      <span className="mt-1 flex items-center gap-1.5 text-[14px] tabular text-muted-foreground">
                         <ToneIcon tone={bandTone[s.top.band]} className="size-3.5" />
-                        {s.n} corridor{s.n === 1 ? "" : "s"} · highest {s.top.score}
+                        {s.n} route{s.n === 1 ? "" : "s"} · highest {s.top.score}
                       </span>
                     </span>
                   </button>
@@ -172,22 +172,26 @@ function CorridorTable({ rows, shown, year, ytdYear, onAssess, onPrefetch }: {
   for (const c of shown) byItem.set(c.hs, [...(byItem.get(c.hs) ?? []), c]);
   const head = "border-b border-border px-3 font-bold";
   const cell = "border-b border-border px-3 py-1";
+  const [all, setAll] = useState(false);
+  const items = rows.filter((r) => byItem.has(r.hs));
+  const SHOWN_ITEMS = 10;
   return (
+    <>
     <div className="max-h-[680px] scroll-pt-[78px] overflow-auto">
-      <table className="w-full min-w-[680px] border-separate border-spacing-0 text-[13px]">
-        <thead className="sticky top-0 z-10 bg-card text-[12px] leading-tight">
+      <table className="w-full min-w-[680px] border-separate border-spacing-0 text-[15px]">
+        <thead className="sticky top-0 z-10 bg-card text-[14px] leading-tight">
           <tr className="h-11">
-            <th scope="col" className={cn(head, "text-left")}>Country</th>
-            <th scope="col" className={cn(head, "text-right")}>Route risk<div className="font-normal text-faint">0–100</div></th>
-            <th scope="col" className={cn(head, "text-right")}>Vs 2017–21<div className="font-normal text-faint">multiple</div></th>
+            <th scope="col" className={cn(head, "text-left")}>Transit country</th>
+            <th scope="col" className={cn(head, "text-right")}>Route risk</th>
+            <th scope="col" className={cn(head, "text-right")}>Exports vs pre-war<div className="font-normal text-faint">2017–21</div></th>
             <th scope="col" className={cn(head, "text-right")}>{year ?? "Latest"} exports</th>
-            <th scope="col" className={cn(head, "text-right")}>{ytdYear ? `${ytdYear} so far` : "This year"}<div className="font-normal text-faint">vs 2021</div></th>
-            <th scope="col" className={cn(head, "text-left")}>Russia exports fell</th>
+            <th scope="col" className={cn(head, "text-right")}>{ytdYear ?? "Year"} so far<div className="font-normal text-faint">vs 2021</div></th>
+            <th scope="col" className={cn(head, "text-left")}>Direct exports to Russia fell</th>
             <th scope="col" className={head}><span className="sr-only">Assess</span></th>
           </tr>
         </thead>
         <tbody>
-          {rows.filter((r) => byItem.has(r.hs)).map((r) => (
+          {(all ? items : items.slice(0, SHOWN_ITEMS)).map((r) => (
             <Fragment key={r.hs}>
               <tr>
                 <th colSpan={7} scope="colgroup" className="sticky top-11 z-[5] border-b border-border bg-muted px-3 py-1.5 text-left font-normal">
@@ -195,7 +199,7 @@ function CorridorTable({ rows, shown, year, ytdYear, onAssess, onPrefetch }: {
                     <ProductArt hs={r.hs} size={22} />
                     <span className="font-bold tabular">{r.hs}</span>
                     <span className="min-w-0 truncate">{r.description}</span>
-                    <span className="ml-auto shrink-0 text-[12px] text-muted-foreground">Tier {r.tier}</span>
+                    <span className="ml-auto shrink-0 text-[14px] text-muted-foreground">Tier {r.tier}</span>
                   </span>
                 </th>
               </tr>
@@ -225,6 +229,15 @@ function CorridorTable({ rows, shown, year, ytdYear, onAssess, onPrefetch }: {
         </tbody>
       </table>
     </div>
+    {/* A toggle, not a one-off button, so keyboard focus stays on it after the table grows */}
+    {items.length > SHOWN_ITEMS && (
+      <div className="border-t border-border px-3 py-2">
+        <Button size="sm" variant="outline" onClick={() => setAll(!all)} aria-expanded={all}>
+          {all ? `Show first ${SHOWN_ITEMS} items` : `Show all ${items.length} items (${shown.length} routes)`}
+        </Button>
+      </div>
+    )}
+    </>
   );
 }
 
@@ -245,7 +258,7 @@ const Heatmap = memo(function Heatmap({ rows, partners, on, onHover, onAssess, o
   const intent = useIntent();
   return (
     <div className="max-h-[680px] scroll-pl-[236px] scroll-pt-[53px] overflow-auto">
-      <table className="w-full border-separate border-spacing-0 text-[12px]" onKeyDown={(e) => {
+      <table className="w-full border-separate border-spacing-0 text-[15px]" onKeyDown={(e) => {
         const at = (e.target as HTMLElement).dataset.cell?.split("-").map(Number);
         const step = ({ ArrowRight: [0, 1], ArrowLeft: [0, -1], ArrowDown: [1, 0], ArrowUp: [-1, 0] } as Record<string, number[]>)[e.key];
         if (!at || !step) return;
@@ -263,7 +276,7 @@ const Heatmap = memo(function Heatmap({ rows, partners, on, onHover, onAssess, o
               <th key={p.code} className="border-b border-border px-1 py-2 font-normal" title={p.name}>
                 <div className="flex flex-col items-center gap-0.5">
                   <Flag code={p.code} size={18} />
-                  <span className="text-[12px] text-muted-foreground">{p.code}</span>
+                  <span className="text-[14px] text-muted-foreground">{p.code}</span>
                 </div>
               </th>
             ))}
@@ -277,7 +290,7 @@ const Heatmap = memo(function Heatmap({ rows, partners, on, onHover, onAssess, o
                   <ProductArt hs={r.hs} size={24} />
                   <div className="min-w-0">
                     <div className="font-bold tabular">{r.hs} <span className="font-normal text-faint">Tier {r.tier}</span></div>
-                    <div className="max-w-[180px] truncate text-[12px] text-muted-foreground">{r.description}</div>
+                    <div className="max-w-[180px] truncate text-muted-foreground">{r.description}</div>
                   </div>
                 </div>
               </th>
@@ -293,8 +306,8 @@ const Heatmap = memo(function Heatmap({ rows, partners, on, onHover, onAssess, o
                       onFocus={() => { setCur(`${i}-${j}`); onHover(corridor); intent.start(() => onPrefetch(r.hs, c.partner)); }}
                       onBlur={intent.stop}
                       onClick={() => { intent.stop(); onAssess(r.hs, c.partner); }}
-                      aria-label={`HS ${r.hs} to ${c.partner}: score ${c.score}, ${c.band}${match ? "" : ", outside the filters"}`}
-                      className="block h-7 w-full min-w-[40px] text-center text-[12px] font-bold tabular outline-none ring-inset transition-shadow hover:ring-2 hover:ring-foreground focus-visible:ring-2 focus-visible:ring-ring">
+                      aria-label={`HS ${r.hs} to ${c.partner}: route risk ${c.score} ${c.band}${match ? "" : ", outside the filters"}`}
+                      className="block h-7 w-full min-w-[40px] text-center font-bold tabular outline-none ring-inset transition-shadow hover:ring-2 hover:ring-foreground focus-visible:ring-2 focus-visible:ring-ring">
                       {c.score}
                     </button>
                   </td>
@@ -324,8 +337,8 @@ export function RadarView({ onAssess, onPrefetch, tiers }: {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   // Touch screens get the heatmap first: the 3D skyline needs hover to read
-  const touch = typeof window !== "undefined" && window.matchMedia("(hover: none)").matches;
-  const [mode, setMode] = usePersisted<Mode>("aegis-radar-view", touch ? "heatmap" : "3d", ["goods", "table", "3d", "heatmap"]);
+  // The heatmap is the readable overview on every device; 3D stays one click away
+  const [mode, setMode] = usePersisted<Mode>("aegis-radar-view", "heatmap", ["goods", "table", "3d", "heatmap"]);
   const topIntent = useIntent();
 
   useEffect(() => {
@@ -439,16 +452,16 @@ export function RadarView({ onAssess, onPrefetch, tiers }: {
   return (
     <div className="space-y-4">
       <PageHeader title="Radar" tour="radar"
-        description={`Route risk for ${data?.rows.length ?? 50} listed items in ${data?.partners.length ?? 12} countries, based on reported exports. Narrow it with the filters, then select a corridor to assess it.`}
+        description={`${data?.rows.length ?? 50} items × ${data?.partners.length ?? 12} transit countries`}
         actions={
-          <Segmented value={exporter} onChange={(code) => update({ ...filters, from: code === "DE" ? [] : [code] })}
+          <Segmented label="Exporter" value={exporter} onChange={(code) => update({ ...filters, from: code === "DE" ? [] : [code] })}
             options={EXPORTERS.map((x) => ({ value: x.code, label: x.name, icon: <Flag code={x.code} size={14} /> }))} />
         } />
 
       {error && <p className="text-sm text-destructive">{error}</p>}
       {!ready || !matrix ? (
         <div className="grid h-64 place-items-center border border-border bg-card text-sm text-muted-foreground">
-          <span className="flex items-center gap-2"><SpinnerGapIcon className="size-4 animate-spin" /> Scoring corridors…</span>
+          <span className="flex items-center gap-2"><SpinnerGapIcon className="size-4 animate-spin" /> Scoring routes…</span>
         </div>
       ) : (
         <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
@@ -459,9 +472,9 @@ export function RadarView({ onAssess, onPrefetch, tiers }: {
             </Button>
             <div id="radar-filters" className={cn("max-lg:mt-2", !filtersOpen && "max-lg:hidden")}>
               <div className="flex items-baseline justify-between pb-2">
-                <h2 className="text-[15px] font-bold">Filter by</h2>
+                <h2 className="text-[17px] font-bold">Filters</h2>
                 {chips.length > 0 && (
-                  <button type="button" onClick={clear} className="text-[12px] text-muted-foreground underline underline-offset-2 hover:text-foreground">Clear all</button>
+                  <button type="button" onClick={clear} className="text-[14px] text-muted-foreground underline underline-offset-2 hover:text-foreground">Clear all</button>
                 )}
               </div>
               <FacetGroup title="Route risk" selected={filters.risk} onToggle={(v) => toggle("risk", v)}
@@ -470,7 +483,7 @@ export function RadarView({ onAssess, onPrefetch, tiers }: {
                 options={[...new Set(ready.rows.map((r) => r.tier))].map((t) => ({
                   value: t, n: n("tier", t), text: `Tier ${t}${tiers?.[t] ? `: ${tiers[t]}` : ""}`, label: <span className="truncate">Tier {t}</span>,
                 }))} />
-              <FacetGroup title="Country" selected={filters.to} onToggle={(v) => toggle("to", v)}
+              <FacetGroup title="Transit country" selected={filters.to} onToggle={(v) => toggle("to", v)}
                 options={ready.partners.map((p) => ({ value: p.code, text: p.name, n: n("to", p.code), label: <><Flag code={p.code} size={14} /><span className="truncate">{p.name}</span></> }))} />
               <FacetGroup title="Signals" selected={filters.signal} onToggle={(v) => toggle("signal", v)}
                 options={SIGNALS.map((s) => ({ value: s.key, text: s.label, n: n("signal", s.key), label: s.label }))} />
@@ -483,11 +496,11 @@ export function RadarView({ onAssess, onPrefetch, tiers }: {
           </aside>
 
           <div className="min-w-0 space-y-4">
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 border-b border-border pb-2 text-[13px]">
-              <span ref={countRef} tabIndex={-1} className="font-bold tabular outline-none" role="status">{shown.length} of {all.length} corridors</span>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 border-b border-border pb-2 text-[15px]">
+              <span ref={countRef} tabIndex={-1} className="font-bold tabular outline-none" role="status">{shown.length} of {all.length} routes</span>
               {chips.map((c) => (
                 <button key={c.k + c.v} type="button" onClick={() => toggle(c.k, c.v)} aria-label={`Remove filter: ${c.text}`}
-                  className="inline-flex items-center gap-1 border border-border px-1.5 py-0.5 text-[12px] hover:border-ring">
+                  className="inline-flex items-center gap-1 border border-border px-1.5 py-0.5 text-[14px] hover:border-ring">
                   {c.text} <XIcon className="size-3" />
                 </button>
               ))}
@@ -499,30 +512,30 @@ export function RadarView({ onAssess, onPrefetch, tiers }: {
             {shown.length === 0 ? (
               <div className="grid h-48 place-items-center border border-border bg-card text-center text-sm text-muted-foreground">
                 <div className="space-y-2">
-                  <p>No corridors match these filters.</p>
+                  <p>No routes match these filters.</p>
                   <Button size="sm" variant="outline" onClick={clear}>Clear all filters</Button>
                 </div>
               </div>
             ) : (
               <>
-                <Panel title="Highest-risk corridors" subtitle={`${ready.exporter_name}, ranked by route risk${chips.length ? ", within the filters" : ""}.`}>
-                  <div className="grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                <Panel title="Highest-risk routes">
+                  <div className="grid grid-cols-[minmax(0,1fr)] border-l border-t border-border sm:grid-cols-2 xl:grid-cols-3">
                     {top.map((c) => (
                       <button key={key(c)} type="button" onClick={() => assess(c.hs, c.partner)} {...topIntent.on(() => prefetch(c.hs, c.partner))}
-                        className="flex items-center gap-3 border border-border p-3 text-left transition-colors hover:border-ring hover:bg-muted/50">
-                        <ProductArt hs={c.hs} size={44} />
+                        className="flex items-start gap-3 border-b border-r border-border p-3 text-left transition-colors hover:bg-muted/60 focus-visible:bg-muted/60 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring">
+                        <ProductArt hs={c.hs} size={40} />
                         <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-1.5 text-[13px] font-bold">
-                            <span className="tabular">{c.hs}</span> → <Flag code={c.partner} size={14} /> {regionName(c.partner)}
+                          <div className="line-clamp-2 text-[16px] font-bold leading-snug" title={c.description}>{c.description}</div>
+                          <div className="flex items-center gap-1.5 text-[15px] text-muted-foreground">
+                            <span className="tabular">HS {c.hs}</span> → <Flag code={c.partner} size={14} /> <span className="text-foreground">{regionName(c.partner)}</span>
                           </div>
-                          <div className="truncate text-[12px] text-muted-foreground">{c.description}</div>
-                          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] tabular">
+                          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[15px] tabular">
                             <StatusBadge tone={bandTone[c.band]}>{c.score}</StatusBadge>
-                            <span>{c.multiplier !== null ? `${times(c.multiplier)} pre-war` : c.emergent ? "new flow" : ""}</span>
-                            {c.ytd !== null && ready.latest_month && <span className="text-muted-foreground">{ready.latest_month.slice(0, 4)} so far {times(c.ytd)} vs 2021</span>}
+                            <span>{c.multiplier !== null ? `Exports vs pre-war: ${times(c.multiplier)}` : c.emergent ? "New flow" : ""}</span>
+                            {c.ytd !== null && ready.latest_month && <span className="text-muted-foreground">{ready.latest_month.slice(0, 4)} so far vs 2021: {times(c.ytd)}</span>}
                           </div>
                           {Math.max(c.multiplier ?? 0, c.ytd ?? 0) >= 20 && (
-                            <div className="mt-0.5 text-[12px] text-muted-foreground">Small pre-war base: the multiple overstates the volume.</div>
+                            <div className="mt-0.5 text-[15px] text-muted-foreground">Small pre-war base: the multiple overstates the volume.</div>
                           )}
                         </div>
                       </button>
@@ -531,19 +544,15 @@ export function RadarView({ onAssess, onPrefetch, tiers }: {
                 </Panel>
 
                 <div className={cn("grid gap-4", (mode === "heatmap" || mode === "3d") && "xl:grid-cols-[minmax(0,1fr)_300px]")}>
-                  <Panel title={mode === "goods" ? "Listed goods" : "All corridors"} tour="skyline"
+                  <Panel title={mode === "goods" ? "Items" : "All routes"} tour="skyline"
                     bodyClassName={mode === "heatmap" || mode === "table" ? "p-0" : undefined}
-                    subtitle={mode === "goods" ? "The EU Common High Priority List by tier. Pick an item to see its corridors."
-                      : mode === "table" ? "Grouped by item, highest route risk first."
-                        : mode === "3d"
-                          ? <>Bar height and colour show the route risk. <span className="[@media(hover:none)]:hidden">Hover for details, click to assess.</span><span className="hidden [@media(hover:none)]:inline">Tap a bar to assess it.</span></>
-                          : <>Stronger colour means a higher route risk. <span className="[@media(hover:none)]:hidden">Click a cell to assess.</span><span className="hidden [@media(hover:none)]:inline">Tap a cell to assess it.</span></>}
+                    subtitle={mode === "goods" ? "EU battlefield item list, by tier" : mode === "3d" ? "Bar height and colour: route risk" : undefined}
                     action={<>
-                      {mode !== "goods" && <Segmented value={sort} onChange={setSort} options={[{ value: "tier", label: "By tier" }, { value: "risk", label: "By risk" }]} />}
-                      <Segmented value={mode} onChange={setMode} options={[
-                        { value: "goods", label: "Goods", icon: <SquaresFourIcon className="size-4" /> },
-                        { value: "table", label: "Table", icon: <TableIcon className="size-4" /> },
+                      {mode !== "goods" && <Segmented label="Sort" value={sort} onChange={setSort} options={[{ value: "tier", label: "By tier" }, { value: "risk", label: "By route risk" }]} />}
+                      <Segmented label="Show" value={mode} onChange={setMode} options={[
                         { value: "heatmap", label: "Heatmap", icon: <GridFourIcon className="size-4" /> },
+                        { value: "goods", label: "Items", icon: <SquaresFourIcon className="size-4" /> },
+                        { value: "table", label: "Table", icon: <TableIcon className="size-4" /> },
                         { value: "3d", label: "3D", icon: <CubeIcon className="size-4" /> },
                       ]} />
                     </>}>
@@ -557,29 +566,30 @@ export function RadarView({ onAssess, onPrefetch, tiers }: {
                     ) : (
                       <>
                         <Heatmap rows={matrix.rows} partners={matrix.data.partners} on={on} onHover={setHover} onAssess={assess} onPrefetch={prefetch} />
-                        <div className="flex flex-wrap items-center gap-2 border-t border-border px-3 py-2 text-[12px] text-muted-foreground">
+                        <div className="flex flex-wrap items-center gap-2 border-t border-border px-3 py-2 text-[14px] text-muted-foreground">
                           Route risk 0
                           <span className="h-2.5 w-40" style={{ background: "linear-gradient(90deg, color-mix(in srgb, var(--status-critical) 4%, var(--card)), var(--status-critical))" }} />
                           100
-                          {on && <span className="ml-3">Pale cells are outside the filters.</span>}
+                          {on && <span className="ml-3">Pale: outside filters</span>}
                         </div>
                       </>
                     )}
                   </Panel>
 
                   {(mode === "heatmap" || mode === "3d") && (
-                    <div className="xl:sticky xl:top-4 xl:self-start">
-                      <Panel title="Selected corridor" subtitle={<><span className="[@media(hover:none)]:hidden">Hover a bar or cell to inspect it.</span><span className="hidden [@media(hover:none)]:inline">The highest-risk corridor is shown.</span></>}>
+                    <div className="xl:sticky xl:top-4 xl:self-start xl:border-l xl:border-border xl:pl-4">
+                      {/* On wide screens a plain side column, like the filters, not a card that ends short of the heatmap */}
+                      <Panel title="Selected route" className="xl:border-0 xl:bg-transparent" headerClassName="xl:px-0 xl:pt-0" bodyClassName="xl:px-0">
                         {detail && (
                           <div className="space-y-3">
                             <div className="flex items-center gap-3">
                               <ProductArt hs={detail.hs} size={56} />
                               <div>
                                 <div className="text-lg font-bold tabular">HS {detail.hs}</div>
-                                <div className="text-[13px] text-muted-foreground">{detail.description}</div>
+                                <div className="text-[15px] text-muted-foreground">{detail.description}</div>
                               </div>
                             </div>
-                            <div className="flex items-center gap-2 text-[14px] font-bold">
+                            <div className="flex items-center gap-2 text-[16px] font-bold">
                               <Flag code={exporter} /> {ready.exporter_name} → <Flag code={detail.partner} /> {regionName(detail.partner)}
                             </div>
                             <div className="flex items-center gap-2">
@@ -587,22 +597,22 @@ export function RadarView({ onAssess, onPrefetch, tiers }: {
                               <span className="text-2xl font-bold tabular">{detail.score}</span>
                               <span className="text-muted-foreground">/ 100</span>
                             </div>
-                            <dl className="grid grid-cols-2 gap-2 text-[13px]">
-                              <dt className="text-muted-foreground">Vs 2017–21</dt>
-                              <dd className="text-right font-bold tabular">{detail.multiplier !== null ? times(detail.multiplier) : detail.emergent ? "new flow" : "—"}</dd>
+                            <dl className="grid grid-cols-2 gap-2 text-[15px]">
+                              <dt className="text-muted-foreground">Exports vs pre-war</dt>
+                              <dd className="text-right font-bold tabular">{detail.multiplier !== null ? times(detail.multiplier) : detail.emergent ? "New flow" : "—"}</dd>
                               <dt className="text-muted-foreground">{ready.years.at(-1)} exports</dt>
                               <dd className="text-right font-bold tabular">{money(detail.latest)}</dd>
-                              <dt className="text-muted-foreground">This year vs 2021</dt>
+                              <dt className="text-muted-foreground">{ready.latest_month?.slice(0, 4) ?? "Year"} so far vs 2021</dt>
                               <dd className="text-right font-bold tabular">{times(detail.ytd)}</dd>
-                              <dt className="text-muted-foreground">Russia exports fell</dt>
+                              <dt className="text-muted-foreground">Direct exports to Russia fell</dt>
                               <dd className="text-right font-bold">{detail.diversion ? "Yes" : "No"}</dd>
                             </dl>
                             <div>
-                              <div className="mb-1 text-[12px] text-muted-foreground">Exports {ready.years[0]}–{ready.years.at(-1)} (shaded: pre-war)</div>
+                              <div className="mb-1 text-[14px] text-muted-foreground">Exports {ready.years[0]}–{ready.years.at(-1)} (shaded: pre-war)</div>
                               <Spark values={detail.spark} w={260} h={60} />
                             </div>
                             <Button className="w-full" onClick={() => assess(detail.hs, detail.partner)} {...topIntent.on(() => prefetch(detail.hs, detail.partner))}>
-                              <CrosshairIcon /> Assess this corridor
+                              <CrosshairIcon /> Assess route
                             </Button>
                           </div>
                         )}

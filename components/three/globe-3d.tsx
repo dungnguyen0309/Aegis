@@ -333,7 +333,7 @@ export function Globe3D({ exporter, exporterName, intermediary, intermediaryName
     directArc.current = null;
     if (hasFlows && from) {
       const pts = pointsFor(`direct:${exporter}`, [from, MARKERS.RU.at], 0.5);
-      const obj = tube(pts, 0.0012, new THREE.MeshBasicMaterial({ color: cssVar("--series-2"), transparent: true, opacity: 0.9 }), true);
+      const obj = tube(pts, 0.0012, new THREE.MeshBasicMaterial({ color: LEG_COLOR.onward, transparent: true, opacity: 0.9 }), true);
       g.add(obj);
       directArc.current = obj;
       picks.push({ points: pts, pick: { kind: "direct" } });
@@ -439,7 +439,7 @@ export function Globe3D({ exporter, exporterName, intermediary, intermediaryName
         <>
           <div className="flex items-center gap-1.5 font-bold"><Flag code={p.code} size={14} />{regionName(p.code)}</div>
           {v !== undefined && <div>{p.code === "RU" ? "Direct exports" : "Exports"} from {exporterName}, {year}: {money(v, unit)}</div>}
-          {p.code !== "RU" && <div className="text-muted-foreground">{p.code === intermediary ? "Selected intermediary" : "Click to assess this country"}</div>}
+          {p.code === intermediary && <div className="text-muted-foreground">Selected transit country</div>}
         </>
       );
     }
@@ -447,7 +447,7 @@ export function Globe3D({ exporter, exporterName, intermediary, intermediaryName
       return (
         <>
           <div className="font-bold">{p.corridor.name}</div>
-          <div className="text-muted-foreground">{MODE_NAME[p.corridor.mode]} · {p.corridor.leg === "restricted" ? "restricted since 2022" : p.corridor.leg === "inbound" ? "EU → intermediary" : "onward to Russia"}</div>
+          <div className="text-muted-foreground">{MODE_NAME[p.corridor.mode]} · {p.corridor.leg === "restricted" ? "restricted since 2022" : p.corridor.leg === "inbound" ? "EU → transit country" : "onward to Russia"}</div>
           <div className="mt-1">{p.corridor.note}</div>
         </>
       );
@@ -507,8 +507,8 @@ export function Globe3D({ exporter, exporterName, intermediary, intermediaryName
               else labelEls.current.delete(l.id);
             }}
               className={l.strong
-                ? "absolute left-0 top-0 whitespace-nowrap text-[13px] font-bold text-[var(--map-label)] opacity-0 transition-opacity duration-200 [text-shadow:0_0_3px_var(--map-halo),0_0_3px_var(--map-halo),0_0_2px_var(--map-halo)]"
-                : "absolute left-0 top-0 whitespace-nowrap text-[12px] text-[var(--map-label)] opacity-0 transition-opacity duration-200 [text-shadow:0_0_3px_var(--map-halo),0_0_2px_var(--map-halo)]"}>
+                ? "absolute left-0 top-0 whitespace-nowrap text-[17px] font-bold text-[var(--map-label)] opacity-0 transition-opacity duration-200 [text-shadow:0_0_3px_var(--map-halo),0_0_3px_var(--map-halo),0_0_2px_var(--map-halo)]"
+                : "absolute left-0 top-0 whitespace-nowrap text-[14px] text-[var(--map-label)] opacity-0 transition-opacity duration-200 [text-shadow:0_0_3px_var(--map-halo),0_0_2px_var(--map-halo)]"}>
               {l.text}
             </div>
           ))}

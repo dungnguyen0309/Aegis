@@ -2,7 +2,8 @@ export type Band = "LOW" | "MODERATE" | "HIGH" | "CRITICAL";
 export type Unit = "EUR" | "USD";
 export type Weights = Record<string, number>;
 export type EntityStatus = "CLEAN" | "PARTIAL" | "MATCH";
-export type VerdictCode = "STOP" | "HOLD" | "RED FLAG" | "ELEVATED" | "STANDARD";
+/** "NAME ONLY" comes from batch screening only: the route was not checked, so a clean name is not a clean result. */
+export type VerdictCode = "STOP" | "HOLD" | "RED FLAG" | "ELEVATED" | "NAME ONLY" | "STANDARD";
 
 export interface Reference {
   exporters: { code: string; name: string; bundled: boolean }[];
@@ -263,6 +264,8 @@ export interface BatchRowOut {
   route_band: Band | null;
   route_no_baseline: boolean | null;
   verdict: VerdictCode;
+  /** Problems with the row's input, in plain words (empty when every given column was used). */
+  issues: string[];
 }
 
 export interface BatchResult {

@@ -38,7 +38,7 @@ export function StatusBadge({ tone, children, className, solid, large }: {
     <span
       className={cn(
         "inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap border font-semibold",
-        large ? "h-9 px-3 text-[17px]" : "h-6 px-2 text-[13px]",
+        large ? "h-9 px-3 text-[17px]" : "h-6 px-2 text-[15px]",
         !solid && "text-foreground",
         className,
       )}

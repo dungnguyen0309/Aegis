@@ -109,17 +109,17 @@ export function RiskCube3D({ rows, onAssess }: { rows: BatchRowOut[]; onAssess?:
     // axis labels painted on the floor (front and left edges) and the back wall
     const front = textPlane([
       ...[0, 50, PARTIAL, MATCH].map((s) => ({ text: String(s), x: 0.15 + (s / 100) * W, y: 0.12, size: 0.11, align: "center" as const })),
-      { text: "Sanctions-match score →", x: 0.15 + W / 2, y: 0.34, size: 0.13, bold: true, align: "center" },
+      { text: "Similarity →", x: 0.15 + W / 2, y: 0.34, size: 0.13, bold: true, align: "center" },
     ], W + 0.3, 0.46);
     front.rotation.x = -Math.PI / 2;
     front.position.set(0, 0.001, D / 2 + 0.23);
     g.add(front);
     const left = textPlane([
       // the canvas top lies at the back of the floor, so tier 1 (front) is drawn at the bottom
-      ...TIERS.map((t, i) => ({ text: t ? `Tier ${t}` : "Not listed", x: 0.86, y: 0.1 + D - ((i + 0.5) / TIERS.length) * D, size: 0.105, align: "right" as const })),
-    ], 0.95, D + 0.2);
+      ...TIERS.map((t, i) => ({ text: t ? `Tier ${t}` : "Not on item list", x: 1.06, y: 0.1 + D - ((i + 0.5) / TIERS.length) * D, size: 0.105, align: "right" as const })),
+    ], 1.15, D + 0.2);
     left.rotation.x = -Math.PI / 2;
-    left.position.set(-W / 2 - 0.475, 0.001, 0);
+    left.position.set(-W / 2 - 0.575, 0.001, 0);
     g.add(left);
     const back = textPlane([
       ...[0, 25, 50, 75, 100].map((s) => ({ text: String(s), x: 0.62, y: 0.1 + H - yOf(s), size: 0.11, align: "right" as const })),
@@ -191,9 +191,8 @@ export function RiskCube3D({ rows, onAssess }: { rows: BatchRowOut[]; onAssess?:
             <StatusBadge tone={entityTone[r.entity_status]}>{entityLabel[r.entity_status]}</StatusBadge>
             <span>{r.best_similarity !== null ? `${r.best_similarity.toFixed(0)}% · ${r.best_match}` : "no listed name"}</span>
           </div>
-          <div>Route: {r.route_score !== null && r.intermediary ? `${r.route_score} / 100 via ${regionName(r.intermediary)}` : "not checked (no HS code or route)"}</div>
-          <div>Item: {r.hs ? `HS ${r.hs} · ${r.chpl_tier ? `Tier ${r.chpl_tier}` : "not on the list"}` : "no HS code"}</div>
-          {onAssess && <div className="text-muted-foreground">Click to open the full assessment</div>}
+          <div>Route risk: {r.route_score !== null && r.intermediary ? `${r.route_score} / 100 · ${regionName(r.intermediary)}` : "not checked (no HS code or route)"}</div>
+          <div>Item: {r.hs ? `HS ${r.hs} · ${r.chpl_tier ? `Tier ${r.chpl_tier}` : "not on item list"}` : "no HS code"}</div>
         </>
       )) : null);
     },
@@ -206,15 +205,15 @@ export function RiskCube3D({ rows, onAssess }: { rows: BatchRowOut[]; onAssess?:
 
   return (
     <Frame3D hostRef={hostRef} stageRef={stageRef} failed={failed} tip={tip} className="h-[360px] bg-card sm:h-[440px]"
-      label={`3D scatter of ${rows.length} screened counterparties by sanctions-match score, route risk and item tier`}
-      hint="Drag to rotate · right-drag to pan · Ctrl + scroll to zoom"
+      label={`3D scatter of ${rows.length} buyers by similarity, route risk and item tier`}
+      hint="Drag to rotate · click a point to assess · Ctrl + scroll to zoom"
       overlay={labelled && (
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
           {rows.map((r, i) => (
             <div key={i} ref={(el) => {
               if (el) labelEls.current.set(i, el);
               else labelEls.current.delete(i);
-            }} className="absolute left-0 top-0 max-w-[180px] truncate text-[12px] text-foreground opacity-0 [text-shadow:0_0_3px_var(--card),0_0_3px_var(--card)]">
+            }} className="absolute left-0 top-0 max-w-[180px] truncate text-[14px] text-foreground opacity-0 [text-shadow:0_0_3px_var(--card),0_0_3px_var(--card)]">
               {r.company}
             </div>
           ))}

@@ -25,8 +25,8 @@ LEVELS = {
 # A sanctions match ends the transaction: these steps replace the due-diligence list
 STOP_ACTIONS = [
     "Stop the shipment and any payment now.",
-    "Escalate to the export control officer (Ausfuhrverantwortliche/r) and legal counsel with the matched list entry.",
-    "Record the decision, the match and the lists checked in the compliance file.",
+    "Escalate to the export control officer (Ausfuhrverantwortliche/r) and legal counsel with the listed name.",
+    "Record the outcome, the match and the lists checked in the compliance file.",
 ]
 ENTITY_LABEL = {"CLEAN": "No match", "PARTIAL": "Possible match", "MATCH": "Match"}
 MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
@@ -54,9 +54,9 @@ Ground rules:
 - The legal frame is the German Foreign Trade and Payments Act (AWG) and Ordinance (AWV), BAFA practice,
   Council Regulation (EU) No 833/2014 (incl. Art. 12 anti-circumvention and Art. 12g 'No-Russia clause' for
   Annex XL Common High Priority Items) and Regulation (EU) 2021/821. Cite only these, and only where the facts support it.
-- Keep route risk (country-level trade anomaly) separate from entity risk (name screening). A country-level surge
-  shows that a corridor is anomalous, not that this buyer is involved.
-- A clean name screen on a critical route is NOT reassurance: shell companies are often unlisted.
+- Keep route risk (country-level trade anomaly) separate from entity risk (sanctions screening). A country-level surge
+  shows that a route is unusual, not that this buyer is involved.
+- No sanctions match on a critical route is NOT reassurance: shell companies are often unlisted.
 - Plain, precise English. 120-180 words. One paragraph, no headings, no bullet points, no preamble."""
 
 
@@ -73,11 +73,11 @@ def decide(entity: dict, route: dict, classification: dict) -> dict:
     else:
         code = "STANDARD"
     if entity["status"] == "CLEAN" and route["band"] in ("CRITICAL", "HIGH"):
-        notes.append("Clean name screen does not offset route risk: shell companies are often unlisted.")
+        notes.append("No sanctions match does not offset route risk: shell companies are often unlisted.")
     if route.get("no_baseline"):
-        notes.append("No pre-war trade to compare with, so the statistical parts of the route score are missing.")
+        notes.append("No pre-war trade to compare with: the statistical parts of route risk are missing.")
     if classification["chpl"]:
-        notes.append("Art. 12g No-Russia clause is mandatory for this item whatever the risk level.")
+        notes.append("Art. 12g No-Russia clause is mandatory for this item at any risk level.")
     return {"code": code, **LEVELS[code], "notes": notes, "actions": STOP_ACTIONS if code == "STOP" else []}
 
 
@@ -107,28 +107,26 @@ def _findings(ctx: dict) -> list[dict]:
         if subj["status"] != "CLEAN" and subj["matches"]:
             m = subj["matches"][0]
             since = f"; listed since {m['listed_since']}" if m.get("listed_since") else ""
-            add("critical" if subj["status"] == "MATCH" else "high", "Counterparty",
+            add("critical" if subj["status"] == "MATCH" else "high", "Buyer",
                 f"{subj['role']} '{subj['name']}' resembles '{m['name']}' ({', '.join(m['lists'])}) at "
                 f"{m['score']:.0f}% similarity{since}.")
     if e["status"] == "CLEAN":
-        add("info", "Counterparty", f"No listed name at 80% similarity or more for the {len(e['subjects'])} screened name(s) "
-                                    f"(EU, OFAC SDN and UN lists; {e['source']}).")
+        add("info", "Buyer", f"No match or possible match (80% similarity or more) on the EU, US and UN lists "
+                             f"for {len(e['subjects'])} name(s) ({e['source']}).")
 
     if c["chpl"]:
-        add("high", "Goods", f"HS {hs} ({c['description'].lower()}) is a Tier {c['tier']} Common High Priority Item, "
-                            "a category found in Russian weapons systems on the battlefield.")
+        add("high", "Item", f"HS {hs} ({c['description'].lower()}) is a Tier {c['tier']} Common High Priority Item (EU battlefield item list).")
 
     if a["emergent"]:
         peak = max(a["points"], key=lambda p: p["value"])
-        add("high", "Route", f"New trade flow: no exports of HS {hs} from {exporter} to {partner} in 2017-2021, "
+        add("high", "Route", f"New flow: no {exporter} exports of HS {hs} to {partner} in 2017–21, "
                              f"then {_money(peak['value'], unit)} in {peak['year']}.")
     elif a["multiplier"] is not None:
-        txt = (f"Exports of HS {hs} from {exporter} to {partner} averaged {a['multiplier']:.1f}× the 2017-2021 baseline "
-               f"after 2022 ({_money(a['post_mean'], unit)} vs {_money(a['baseline']['mean'], unit)} a year).")
+        txt = (f"Exports vs pre-war: {a['multiplier']:.1f}× ({_money(a['post_mean'], unit)} a year since 2022 "
+               f"vs {_money(a['baseline']['mean'], unit)} a year in 2017–21).")
         if a["z_max"] is not None:
             above = "above" if a["z_max"] > a["threshold"] else "below"
-            txt += (f" The peak year, {a['z_max_year']}, was {a['z_max']:.1f} standard deviations from the pre-war average "
-                    f"({above} the {a['threshold']:.1f} flag threshold).")
+            txt += f" Peak year {a['z_max_year']}: Z-score {a['z_max']:.1f}, {above} the {a['threshold']:.1f} threshold."
         add("high" if a["band"] in ("CRITICAL", "HIGH") else "medium", "Route", txt)
     if a["note"]:
         add("info", "Route", a["note"])
@@ -136,44 +134,42 @@ def _findings(ctx: dict) -> list[dict]:
     if a["russia_ratio"] is not None:
         drop = (1 - a["russia_ratio"]) * 100
         if a["diversion_pattern"]:
-            add("high", "Route", f"Direct exports of HS {hs} to Russia fell {drop:.0f}% over the same period while "
-                                 f"exports to {partner} rose: the substitution pattern typical of diversion.")
+            add("high", "Route", f"Direct exports of HS {hs} to Russia fell {drop:.0f}% over the same years while exports to {partner} rose: "
+                                 "a typical diversion pattern.")
         elif drop > 50:
-            add("info", "Route", f"Direct exports to Russia fell {drop:.0f}%, without an offsetting rise to {partner}.")
+            add("info", "Route", f"Direct exports to Russia fell {drop:.0f}%, with no matching rise to {partner}.")
 
     mo = ctx.get("monthly")
     if mo and mo["ytd"]["ratio"] is not None and mo["ytd"]["value"] > 0:
         y, r = mo["ytd"], mo["ytd"]["ratio"]
         span = f"{MONTHS[0]}–{MONTHS[y['through_month'] - 1]}"
         add("high" if r >= 2 else "info", "Monthly",
-            f"So far in {y['year']} ({span}), exports are {r:.1f}× the same months of {y['reference_year']}"
-            + (": the surge is continuing." if r >= 2 else "."))
+            f"{y['year']} so far vs {y['reference_year']} ({span}): {r:.1f}×." + (" Still elevated." if r >= 2 else ""))
 
     uv = ctx.get("unit_values")
     if uv and uv["flag"]:
-        add("medium", "Price", f"Price per kg after 2022 is {uv['change']:.1f}× the pre-war level "
-                               f"({_money(uv['post'], unit)}/kg vs {_money(uv['baseline'], unit)}/kg): "
-                               "ask exactly what is being shipped.")
+        add("medium", "Price", f"Price per kg since 2022: {uv['change']:.1f}× pre-war "
+                               f"({_money(uv['post'], unit)}/kg vs {_money(uv['baseline'], unit)}/kg). "
+                               "Ask exactly what is being shipped.")
 
     mi = ctx.get("mirror")
     if mi:
         if mi.get("gap") is not None and mi["gap"] >= 0.3:
-            add("medium", "Mirror", f"In {mi['gap_year']}, {partner} reported receiving {mi['gap'] * 100:.0f}% less than "
-                                    "Germany reported shipping: goods may be re-routed or declared differently in transit.")
+            add("medium", "Mirror", f"{mi['gap_year']}: {partner} reported receiving {mi['gap'] * 100:.0f}% less than "
+                                    "Germany reported shipping. Possible re-routing or misdeclaration in transit.")
         if mi.get("onward_multiplier") is not None and mi["onward_multiplier"] >= 2:
-            add("high", "Mirror", f"{partner}'s own reported exports of HS {hs} to Russia averaged "
-                                  f"{mi['onward_multiplier']:.1f}× their pre-war level after 2022.")
+            add("high", "Mirror", f"{partner}'s own exports of HS {hs} to Russia since 2022: {mi['onward_multiplier']:.1f}× pre-war.")
 
     prof = a.get("jurisdiction_profile")
     if prof:
-        add("medium" if prof["exposure"] >= 9 else "info", "Country", f"{partner}: {prof['rationale']}")
+        add("medium" if prof["exposure"] >= 9 else "info", "Transit country", f"{partner}: {prof['rationale']}")
     sens = a["sensitivity"]
     if a["custom_weights"]:
-        add("info", "Method", f"Custom score weights applied: route risk {a['score']} ({a['band'].capitalize()}); default weights "
-                              f"give {sens['default']['score']} ({sens['default']['band'].capitalize()}).")
+        add("info", "Method", f"Custom weights: route risk {a['score']} {a['band'].capitalize()}; default weights "
+                              f"give {sens['default']['score']} {sens['default']['band'].capitalize()}.")
     elif sens["equal"]["band"] != a["band"]:
-        add("info", "Method", f"Weighting matters here: with equal weights the route risk is "
-                              f"{sens['equal']['score']} ({sens['equal']['band'].capitalize()}).")
+        add("info", "Method", f"Equal weights change the band: route risk "
+                              f"{sens['equal']['score']} {sens['equal']['band'].capitalize()}.")
     order = {"critical": 0, "high": 1, "medium": 2, "info": 3}
     return sorted(out, key=lambda f: order[f["severity"]])
 
@@ -183,7 +179,7 @@ def _legal(ctx: dict) -> list[str]:
     lists = {li for s in e["subjects"] for m in s["matches"][:1] if s["status"] != "CLEAN" for li in m["lists"]}
     out = []
     if lists & {"EU", "UN"}:
-        out.append("EU/UN-listed party: making goods or funds available is prohibited (asset freeze, e.g. Art. 2 Reg. "
+        out.append("EU/UN listing: making goods or funds available is prohibited (asset freeze, e.g. Art. 2 Reg. "
                    "(EU) 269/2014). Freeze, escalate and report: BAFA for economic resources, Deutsche Bundesbank for funds.")
     elif "OFAC" in lists:
         out.append("US OFAC SDN listing only: EU law may not bar the sale, but US secondary-sanctions exposure "
@@ -219,7 +215,7 @@ def _edd(ctx: dict) -> list[str]:
         steps.append("Verify the Art. 12g No-Russia clause is in the contract with enforceable remedies "
                      "(termination, contractual penalty, audit right).")
     steps += [
-        "Corporate due diligence on the buyer: incorporation date (post-2022 shells are a classic flag), capital, "
+        "Corporate due diligence on the buyer: incorporation date (shells formed since 2022 are a classic warning sign), capital, "
         "real premises, web presence, staff and fit between its business and the order. Check the LEI register.",
         "Identify and screen beneficial owners and directors; look for Russian or Belarusian links and recent "
         "ownership changes.",
@@ -227,11 +223,11 @@ def _edd(ctx: dict) -> list[str]:
         "Russia-linked banks, unusual prepayment.",
     ]
     if a["band"] in ("CRITICAL", "HIGH") or a["emergent"]:
-        steps.append("Test the order's plausibility: is the volume consistent with demand in the buyer's country, "
-                     "given that the corridor shows an abnormal post-2022 surge?")
+        steps.append("Test the order's plausibility: does the volume fit demand in the buyer country, "
+                     "given the route's unusual rise since 2022?")
         steps.append("Arrange post-shipment verification (delivery proof, site visit) and repeat screening before "
                      "each delivery.")
-    steps.append("Record the assessment and decision in the ICP audit trail; when classification is unclear, request "
+    steps.append("Record the assessment and action in the ICP audit trail; when classification is unclear, request "
                  "an AzG (Auskunft zur Güterliste) from BAFA.")
     return steps
 
@@ -239,12 +235,11 @@ def _edd(ctx: dict) -> list[str]:
 def _limitations(ctx: dict) -> list[str]:
     years = ctx["series"]["years"]
     return [
-        "Route risk is a macro indicator (country x HS code). It shows that a corridor is anomalous, not that this "
-        "buyer is involved: treating it as proof would be an ecological fallacy.",
-        f"Annual data lags 6-12 months (latest year here: {years[-1] if years else 'n/a'}); monthly data narrows that "
-        f"to about two months. Exporter-reported statistics ({ctx['series'].get('source', 'Eurostat')}) are used "
-        "because intermediaries under-report onward flows.",
-        "Name screening cannot catch newly formed shells or nominee directors; a clean result is not clearance.",
+        "Route risk is a country × HS code indicator: it shows an unusual route, not that this buyer is involved.",
+        f"Annual data lags 6–12 months (latest year: {years[-1] if years else 'n/a'}); monthly data about two months. "
+        f"Exporter-reported figures ({ctx['series'].get('source', 'Eurostat')}) are used because transit countries "
+        "under-report onward flows.",
+        "Sanctions screening cannot catch new shells or nominee directors; a clean result is not clearance.",
         "Built on open data; not legal advice.",
     ]
 
@@ -291,14 +286,15 @@ def _markdown(m: dict) -> str:
         m["bluf"],
         "",
         f"Route risk: **{m['scores']['route']}/100 ({_route_label(m['scores'])})**  |  "
-        f"Sanctions screening: **{m['scores']['entity']}/100 ({ENTITY_LABEL[m['scores']['entity_status']]})**",
+        f"Sanctions screening: **{ENTITY_LABEL[m['scores']['entity_status']]}"
+        f"{'' if m['scores']['entity_status'] == 'CLEAN' else f' ({m["scores"]["entity"]}/100)'}**",
         "",
     ]
     if m.get("narrative"):
         lines += ["## Analyst assessment", m["narrative"], ""]
-    lines += ["## Key findings"] + [f"- **{f['area']}:** {f['text']}" for f in m["findings"]] + [""]
+    lines += ["## Findings"] + [f"- **{f['area']}:** {f['text']}" for f in m["findings"]] + [""]
     lines += ["## Legal exposure"] + [f"- {x}" for x in m["legal"]] + [""]
-    heading = "Required actions" if m["verdict"]["code"] == "STOP" else "Recommended enhanced due diligence"
+    heading = "Required actions" if m["verdict"]["code"] == "STOP" else "Enhanced due diligence"
     lines += [f"## {heading}"] + [f"{i}. {x}" for i, x in enumerate(m["edd"], 1)] + [""]
     lines += ["## Limitations"] + [f"- {x}" for x in m["limitations"]] + [""]
     lines += ["## Sources"] + [f"- [{s['label']}]({s['url']})" for s in m["sources"]]
@@ -315,7 +311,7 @@ async def build(ctx: dict) -> dict:
     if q["jurisdiction_name"] == q["intermediary_name"]:
         subject += f", {q['intermediary_name']}"
     else:
-        subject += f" ({q['jurisdiction_name']}) via {q['intermediary_name']}"
+        subject += f" ({q['jurisdiction_name']}) through {q['intermediary_name']}"
     memo = {
         "title": "Export compliance briefing",
         "ref": f"AEG-{today:%Y%m%d}-{digest}",

@@ -31,7 +31,7 @@ export class ViewBoundary extends Component<{
     return (
       <div role="alert" className={cn("flex min-h-40 flex-col items-center justify-center gap-2 border border-border bg-card p-6 text-center text-sm", this.props.className)}>
         <WarningIcon className="size-6 text-warning-ink" />
-        <p><b>{this.props.label}</b> could not be displayed. The rest of the page still works.</p>
+        <p><b>{this.props.label}</b> could not be displayed.</p>
         <Button size="sm" variant="outline" onClick={() => this.setState({ error: null })}>Try again</Button>
       </div>
     );

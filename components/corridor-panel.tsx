@@ -4,8 +4,8 @@ import { AirplaneIcon, BoatIcon, PauseIcon, PlayIcon, ProhibitIcon, TrainIcon, T
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { lazy3D, Loading3D } from "@/components/three/lazy";
-import { Flag } from "@/components/visuals";
-import { CORRIDORS, type Corridor, LEG_COLOR } from "@/lib/corridors";
+import { Flag, regionName } from "@/components/visuals";
+import { CORRIDORS, type Corridor, INTERMEDIARY_CODES, LEG_COLOR } from "@/lib/corridors";
 import { money } from "@/lib/format";
 import type { Flows } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -52,20 +52,27 @@ export function useTimelapse(count: number) {
   };
 }
 
-export function Segmented<T extends string>({ value, onChange, options }: {
+export function Segmented<T extends string>({ value, onChange, options, label }: {
   value: T; onChange: (v: T) => void; options: { value: T; label: string; icon?: ReactNode }[];
+  /** Visible name for the choice, when two switchers sit side by side. */
+  label?: string;
 }) {
-  return (
+  const group = (
     <div className="inline-flex max-w-full flex-wrap border border-border">
       {options.map((o) => (
         <button key={o.value} type="button" onClick={() => onChange(o.value)} aria-pressed={value === o.value}
-          className={cn("flex h-7 items-center gap-1.5 px-2.5 text-[13px]",
+          className={cn("flex h-7 items-center gap-1.5 px-2.5 text-[15px]",
             value === o.value ? "bg-primary text-primary-foreground" : "hover:bg-muted")}>
           {o.icon} {o.label}
         </button>
       ))}
     </div>
   );
+  return label ? (
+    <div role="group" aria-label={label} className="inline-flex items-center gap-2">
+      <span className="text-[14px] text-muted-foreground" aria-hidden>{label}</span>{group}
+    </div>
+  ) : group;
 }
 
 /** Freight corridors: 3D globe or flat map, a shared time-lapse and the corridor list. */
@@ -94,11 +101,11 @@ export function CorridorPanel({ exporter, exporterName, intermediary, intermedia
   return (
     <div>
       <div className="mb-2">
-        <div className="flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-muted-foreground">
-          <span className="inline-flex items-center gap-1.5"><span className="h-0.5 w-5" style={{ background: LEG_COLOR.inbound }} />EU → intermediary</span>
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-[14px] text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5"><span className="h-0.5 w-5" style={{ background: LEG_COLOR.inbound }} />EU → transit country</span>
           <span className="inline-flex items-center gap-1.5"><span className="h-0.5 w-5" style={{ background: LEG_COLOR.onward }} />Onward to Russia</span>
           <span className="inline-flex items-center gap-1.5"><span className="h-0.5 w-5" style={{ background: LEG_COLOR.restricted }} />Restricted</span>
-          {flows && <span className="inline-flex items-center gap-1.5"><span className="w-5 border-t-2 border-dashed" style={{ borderColor: "var(--series-2)" }} />Direct to Russia</span>}
+          {flows && <span className="inline-flex items-center gap-1.5"><span className="w-5 border-t-2 border-dashed" style={{ borderColor: LEG_COLOR.onward }} />Direct exports to Russia</span>}
           <span className="inline-flex items-center gap-1"><BoatIcon className="size-3.5" />sea</span>
           <span className="inline-flex items-center gap-1"><TrainIcon className="size-3.5" />rail</span>
           <span className="inline-flex items-center gap-1"><TruckIcon className="size-3.5" />road</span>
@@ -107,7 +114,7 @@ export function CorridorPanel({ exporter, exporterName, intermediary, intermedia
       </div>
 
       {flows && years.length > 1 && (
-        <div className="mb-2 flex flex-wrap items-center gap-3 text-[13px]">
+        <div className="mb-2 flex flex-wrap items-center gap-3 text-[15px]">
           <button type="button" onClick={t.toggle}
             className="inline-flex items-center gap-1.5 border border-border px-2.5 py-1 font-bold hover:bg-muted">
             {t.playing ? <PauseIcon weight="fill" className="size-3.5" /> : <PlayIcon weight="fill" className="size-3.5" />}
@@ -117,13 +124,23 @@ export function CorridorPanel({ exporter, exporterName, intermediary, intermedia
             onChange={(e) => t.seek(Number(e.target.value))} className="w-40 accent-[var(--series-1)]" />
           <span className="font-bold tabular">{years[t.yi]}</span>
           <span className="text-muted-foreground">
-            Line width: exports of this item in {years[t.yi]} · direct to Russia {money(directValue, flows.unit)}
+            Line width: {years[t.yi]} exports · Direct exports to Russia {money(directValue, flows.unit)}
           </span>
         </div>
       )}
 
       {view === "globe" ? <Globe3D {...props} /> : <CorridorMap {...props} />}
-      <p className="mt-1.5 text-right text-[12px] text-faint">Click a flag to assess that country</p>
+      <p className="mt-1.5 text-right text-[14px] text-faint [@media(hover:none)]:hidden">Click a flag to assess</p>
+      {/* Flags on the map are too small to tap: touch screens get a row of countries instead */}
+      <div className="mt-2 hidden flex-wrap gap-1.5 [@media(hover:none)]:flex" role="group" aria-label="Assess another transit country">
+        {INTERMEDIARY_CODES.map((code) => (
+          <button key={code} type="button" onClick={() => onSelect(code)} aria-pressed={code === intermediary}
+            className={cn("inline-flex min-h-11 items-center gap-1.5 border px-3 text-[15px]",
+              code === intermediary ? "border-foreground font-bold" : "border-border")}>
+            <Flag code={code} size={16} /> {regionName(code)}
+          </button>
+        ))}
+      </div>
 
       <div className="mt-3 grid gap-4 md:grid-cols-3">
         {groups.map((g) => {
@@ -131,7 +148,7 @@ export function CorridorPanel({ exporter, exporterName, intermediary, intermedia
           if (!items.length) return null;
           return (
             <div key={g.leg}>
-              <h3 className="mb-2 flex items-center gap-1.5 text-[14px] font-bold">
+              <h3 className="mb-2 flex items-center gap-1.5 text-[16px] font-bold">
                 {g.leg === "inbound" && <Flag code={exporter} size={14} />}
                 {g.leg === "onward" && <Flag code={intermediary} size={14} />}
                 {g.leg === "restricted" && <ProhibitIcon className="size-3.5 text-destructive" />}
@@ -144,7 +161,7 @@ export function CorridorPanel({ exporter, exporterName, intermediary, intermedia
                     <li key={r.id} onMouseEnter={() => setHover(r.id)} onMouseLeave={() => setHover(null)}
                       className={cn("flex gap-2.5 py-0.5 transition-colors", hover === r.id && "bg-muted")}>
                       <Icon weight="duotone" className="mt-0.5 size-4 shrink-0" style={{ color: LEG_COLOR[r.leg] }} />
-                      <div className="text-[13px] leading-snug">
+                      <div className="text-[15px] leading-snug">
                         <div className="font-bold">{r.name}</div>
                         <div className="text-muted-foreground">{r.note}</div>
                       </div>

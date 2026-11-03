@@ -21,13 +21,13 @@ import { Flag } from "@/components/visuals";
 import { money, pct, zfmt, moneyTick, niceTicks } from "@/lib/format";
 import type { Route, Unit } from "@/lib/types";
 
-const AXIS_TICK = { fill: "var(--muted-foreground)", fontSize: 12, fontFamily: "var(--font-sans)" };
+const AXIS_TICK = { fill: "var(--muted-foreground)", fontSize: 13, fontFamily: "var(--font-sans)" };
 
 type TipProps = { active?: boolean; payload?: ReadonlyArray<{ payload?: unknown }> };
 
 function Tip({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-w-44 border border-border bg-popover px-3 py-2 text-[12px] shadow-lg tabular">{children}</div>
+    <div className="min-w-44 border border-border bg-popover px-3 py-2 text-[14px] shadow-lg tabular">{children}</div>
   );
 }
 
@@ -65,11 +65,11 @@ export function AnomalyChart({ route, partner, unit }: { route: Route; partner: 
 
   return (
     <div>
-      <div className="mb-3 flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-muted-foreground">
-        <LegendKey color="var(--chart-baseline)" label={`${b0}–${String(b1).slice(2)} (baseline)`} />
+      <div className="mb-3 flex flex-wrap gap-x-4 gap-y-1 text-[14px] text-muted-foreground">
+        <LegendKey color="var(--chart-baseline)" label={`Pre-war (${b0}–${String(b1).slice(2)})`} />
         {data.some((d) => d.period !== "baseline" && !d.flagged) && <LegendKey color="var(--series-1)" label="Since 2022" />}
-        {data.some((d) => d.flagged) && <LegendKey color="var(--status-critical)" label={`Unusual year (over ${route.threshold} standard deviations)`} />}
-        {hasBand && <LegendKey color="var(--muted-foreground)" label="Baseline average" line />}
+        {data.some((d) => d.flagged) && <LegendKey color="var(--status-critical)" label={`Unusual year (Z-score over ${route.threshold})`} />}
+        {hasBand && <LegendKey color="var(--muted-foreground)" label="Pre-war mean" line />}
         {hasBand && <LegendKey color="var(--status-warning)" label="Pre-war range" line />}
       </div>
       <div className="h-[260px] w-full">
@@ -99,7 +99,7 @@ export function AnomalyChart({ route, partner, unit }: { route: Route; partner: 
                     <Row k="Z-score" v={zfmt(p.z)} />
                     {p.flagged && (
                       <div className="mt-1 flex items-center gap-1 text-foreground">
-                        <ToneIcon tone="critical" className="size-3" /> Anomaly flagged
+                        <ToneIcon tone="critical" className="size-3" /> Unusual year
                       </div>
                     )}
                   </Tip>
@@ -118,8 +118,8 @@ export function AnomalyChart({ route, partner, unit }: { route: Route; partner: 
                   const d = data[index];
                   if (!d?.flagged || width < 16) return null; // too narrow: tooltip and table carry it
                   return (
-                    <text x={x + width / 2} y={y - 7} textAnchor="middle" fontSize={10} fill="var(--foreground)">
-                      {d.z !== null ? `${zfmt(d.z)} SD` : "new"}
+                    <text x={x + width / 2} y={y - 7} textAnchor="middle" fontSize={12} fill="var(--foreground)">
+                      {d.z !== null ? `Z ${zfmt(d.z)}` : "new"}
                     </text>
                   );
                 }}
@@ -148,7 +148,7 @@ export function DisplacementChart({ route, partner, partnerCode, unit }: {
   if (mi <= 0 || mr <= 0) {
     return (
       <p className="py-10 text-center text-xs text-muted-foreground">
-        {mi <= 0 ? `No ${years[0]}–${years[years.length - 1]} exports to ${partner} to index against.` : "No baseline exports to Russia to index against."}
+        {mi <= 0 ? `No pre-war exports to ${partner} to index against.` : "No pre-war direct exports to Russia to index against."}
       </p>
     );
   }
@@ -169,7 +169,7 @@ export function DisplacementChart({ route, partner, partnerCode, unit }: {
       const { x, y, index } = props as { x: number; y: number; index: number };
       if (index !== last) return null;
       return (
-        <text x={x + 8} y={y + 4} fontSize={11} fill="var(--foreground)">
+        <text x={x + 8} y={y + 4} fontSize={12} fill="var(--foreground)">
           {name}
         </text>
       );
@@ -177,10 +177,10 @@ export function DisplacementChart({ route, partner, partnerCode, unit }: {
 
   return (
     <div>
-      <div className="mb-3 flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-muted-foreground">
+      <div className="mb-3 flex flex-wrap gap-x-4 gap-y-1 text-[14px] text-muted-foreground">
         <LegendKey color="var(--series-1)" label={`Exports to ${partner}`} line flag={partnerCode} />
-        <LegendKey color="var(--series-2)" label="Exports to Russia" line flag="RU" />
-        <span>Index, baseline avg = 100 (log)</span>
+        <LegendKey color="var(--series-2)" label="Direct exports to Russia" line flag="RU" />
+        <span>Index, pre-war = 100, log scale</span>
       </div>
       <div className="h-[220px] w-full">
         <ResponsiveContainer width="100%" height="100%">
@@ -225,7 +225,7 @@ export function DisplacementChart({ route, partner, partnerCode, unit }: {
 
 export function SeriesTable({ route, unit }: { route: Route; unit: Unit }) {
   return (
-    <Table className="tabular text-[12px]">
+    <Table className="tabular text-[14px]">
       <TableHeader>
         <TableRow>
           <TableHead>Year</TableHead>
@@ -233,14 +233,14 @@ export function SeriesTable({ route, unit }: { route: Route; unit: Unit }) {
           <TableHead className="text-right">YoY</TableHead>
           <TableHead className="text-right">Z</TableHead>
           <TableHead className="text-right">p (one-sided)</TableHead>
-          <TableHead className="text-right">To Russia</TableHead>
+          <TableHead className="text-right">Direct exports to Russia</TableHead>
           <TableHead />
         </TableRow>
       </TableHeader>
       <TableBody>
         {route.points.map((p) => (
           <TableRow key={p.year}>
-            <TableCell>{p.year}{p.period === "baseline" && <span className="ml-1.5 text-faint">base</span>}</TableCell>
+            <TableCell>{p.year}{p.period === "baseline" && <span className="ml-1.5 text-faint">pre-war</span>}</TableCell>
             <TableCell className="text-right">{money(p.value, unit, 2)}</TableCell>
             <TableCell className="text-right">{pct(p.yoy)}</TableCell>
             <TableCell className="text-right">{zfmt(p.z)}</TableCell>

@@ -29,27 +29,27 @@ export function RegistryLookup({ name, country }: { name: string; country: strin
       {!current.data && (
         <Button size="sm" variant="outline" onClick={run} disabled={current.loading}>
           {current.loading ? <SpinnerGapIcon className="animate-spin" /> : <BuildingsIcon />}
-          {current.loading ? "Searching the LEI register…" : "Look up in the LEI register (GLEIF)"}
+          {current.loading ? "Searching…" : "Look up LEI"}
         </Button>
       )}
-      {current.error && <p className="mt-2 text-[12px] text-destructive">{current.error}</p>}
+      {current.error && <p className="mt-2 text-[14px] text-destructive">{current.error}</p>}
       {current.data && (
         <div className="space-y-2">
-          <div className="text-[14px] font-bold">Company register (GLEIF)</div>
+          <div className="text-[16px] font-bold">LEI register</div>
           {current.data.flags.map((f) => (
-            <p key={f.text} className="flex items-start gap-2 text-[13px]">
+            <p key={f.text} className="flex items-start gap-2 text-[15px]">
               <ToneIcon tone={f.severity === "critical" ? "critical" : f.severity === "high" ? "critical" : "serious"} className="mt-0.5 size-4" />
               {f.text}
             </p>
           ))}
           {current.data.results.map((r) => (
-            <div key={r.lei} className="flex flex-wrap items-start gap-3 rounded-sm border border-border p-2.5 text-[13px]">
+            <div key={r.lei} className="flex flex-wrap items-start gap-3 rounded-sm border border-border p-2.5 text-[15px]">
               <CompanyMark name={r.name} size={28} />
               <div className="min-w-0 flex-1">
                 <a href={r.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-bold hover:underline">
                   {r.name} <ArrowSquareOutIcon className="size-3 text-faint" />
                 </a>
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[12px] text-muted-foreground">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[14px] text-muted-foreground">
                   {r.country && <span className="inline-flex items-center gap-1"><Flag code={r.country} size={14} /> {r.city}</span>}
                   <span>LEI {r.lei}</span>
                   <span>Incorporated {r.created ?? "unknown"}</span>
@@ -59,11 +59,11 @@ export function RegistryLookup({ name, country }: { name: string; country: strin
                   )}
                 </div>
               </div>
-              <span className="text-[12px] tabular text-muted-foreground">{r.similarity.toFixed(0)}% name match</span>
+              <span className="text-[14px] tabular text-muted-foreground">Similarity {r.similarity.toFixed(0)}%</span>
             </div>
           ))}
-          {current.data.note && <p className="text-[13px] text-muted-foreground">{current.data.note}</p>}
-          <p className="text-[12px] text-faint">{current.data.source}</p>
+          {current.data.note && <p className="text-[15px] text-muted-foreground">{current.data.note}</p>}
+          <p className="text-[14px] text-faint">{current.data.source}</p>
         </div>
       )}
     </div>

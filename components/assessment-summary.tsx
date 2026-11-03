@@ -17,16 +17,16 @@ function itemTone(a: Assessment): Tone {
   return c.status === "NOT LISTED" ? "good" : "warning";
 }
 
-function Kpi({ label, value, sub, onClick }: { label: string; value: ReactNode; sub: ReactNode; onClick: () => void }) {
+function Kpi({ label, value, sub, onClick }: { label: string; value: ReactNode; sub?: ReactNode; onClick: () => void }) {
   return (
     <button type="button" onClick={onClick}
-      className="group flex min-w-0 flex-col items-start gap-1 bg-card px-5 py-3 text-left transition-colors hover:bg-muted">
-      <span className="flex w-full items-center justify-between text-[12px] text-muted-foreground">
+      className="group flex min-w-0 flex-col items-start gap-1 bg-card px-4 py-3 text-left sm:px-5 transition-colors hover:bg-muted">
+      <span className="flex w-full items-center justify-between gap-1 whitespace-nowrap text-[14px] text-muted-foreground">
         {label}
         <CaretRightIcon className="size-3.5 opacity-40 transition-opacity group-hover:opacity-100" aria-hidden />
       </span>
       <span className="flex min-h-8 flex-wrap items-center gap-2">{value}</span>
-      <span className="line-clamp-3 text-[12.5px] leading-snug text-muted-foreground">{sub}</span>
+      {sub && <span className="text-[14px] leading-snug text-muted-foreground sm:line-clamp-3">{sub}</span>}
     </button>
   );
 }
@@ -83,15 +83,15 @@ export function AssessmentSummary({ a, onSection, listsDate, example }: {
         <div className="flex min-w-0 items-start gap-3">
           <CompanyMark name={q.company} size={36} flagged={e.status !== "CLEAN"} />
           <div className="min-w-0">
-            <h1 className="flex flex-wrap items-center gap-x-2 text-[17px] font-bold leading-tight">
+            <h1 className="flex flex-wrap items-center gap-x-2 text-[21px] font-bold leading-tight">
               {q.company}
-              {example && <span className="border border-border px-1.5 text-[12px] font-normal text-muted-foreground">Example</span>}
+              {example && <span className="border border-border px-1.5 text-[14px] font-normal text-muted-foreground">Example</span>}
             </h1>
-            <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[13px] text-muted-foreground">
+            <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[15px] text-muted-foreground">
               {q.jurisdiction && <><Flag code={q.jurisdiction} size={14} /> {regionName(q.jurisdiction)} <span className="text-faint">·</span></>}
               <span>HS {c.hs.slice(0, 4)}.{c.hs.slice(4)}{c.description && ` ${c.description}`}</span>
             </div>
-            <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[13px] text-muted-foreground">
+            <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[15px] text-muted-foreground">
               <Flag code={q.exporter} size={14} /> {q.exporter_name} <span className="text-faint">→</span>
               <Flag code={q.intermediary} size={14} /> {q.intermediary_name} <span className="text-faint">→</span>
               <Flag code="RU" size={14} /> Russia
@@ -110,25 +110,25 @@ export function AssessmentSummary({ a, onSection, listsDate, example }: {
 
       <div className="px-5 pb-4 pt-4">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-          <span className="sr-only">Recommended action:</span>
+          <span className="sr-only">Action:</span>
           <StatusBadge tone={tone} solid={verdictSolid(a.verdict.code)} large>{a.verdict.code}</StatusBadge>
-          <h2 className="text-[22px] font-bold leading-tight sm:text-[26px]">{a.verdict.title}</h2>
+          <h2 className="text-[26px] font-bold leading-tight sm:text-[32px]">{a.verdict.title}</h2>
         </div>
         {a.verdict.actions.length > 0 && (
-          <ol className="mt-3 list-decimal space-y-0.5 pl-5 text-[15px] font-semibold">
+          <ol className="mt-3 list-decimal space-y-0.5 pl-5 text-[17px] font-semibold">
             {a.verdict.actions.map((s) => <li key={s}>{s}</li>)}
           </ol>
         )}
         {a.verdict.notes.length > 0 && (
-          <ul className="mt-2 space-y-0.5 text-[14px] text-muted-foreground">
+          <ul className="mt-2 space-y-0.5 text-[16px] text-muted-foreground">
             {a.verdict.notes.map((n) => <li key={n}>{n}</li>)}
           </ul>
         )}
-        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-muted-foreground">
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[15px] text-muted-foreground">
           {listsDate && <span>Sanctions lists checked {listsDate}</span>}
           <button type="button" onClick={() => onSection("briefing")}
             className="font-semibold text-foreground underline decoration-border underline-offset-4 hover:decoration-foreground">
-            {a.verdict.actions.length > 0 ? "Full briefing" : "Due-diligence steps in the briefing"}
+            Open briefing
           </button>
         </div>
       </div>
@@ -138,17 +138,17 @@ export function AssessmentSummary({ a, onSection, listsDate, example }: {
           value={<StatusBadge tone={entityTone[e.status]}>{entityLabel[e.status]}</StatusBadge>}
           sub={best && e.status !== "CLEAN"
             ? `${best.name} · ${best.lists.join(", ")} · ${best.score.toFixed(0)}%`
-            : `${e.subjects.length} name${e.subjects.length > 1 ? "s" : ""} checked against EU, US and UN lists`} />
+            : `${e.subjects.length} name${e.subjects.length > 1 ? "s" : ""} · EU, US and UN lists`} />
         <Kpi label="Route risk" onClick={() => onSection("route")}
           value={<><span className="text-xl font-bold leading-none tabular">{r.score}</span><span className="text-muted-foreground">/ 100</span>
             <StatusBadge tone={rs.tone}>{rs.label}</StatusBadge></>}
-          sub={`${q.exporter_name} → ${q.intermediary_name} for this item`} />
+          sub={`${q.exporter_name} → ${q.intermediary_name}`} />
         <Kpi label="Item" onClick={() => onSection("goods")}
-          value={<StatusBadge tone={itemTone(a)}>{c.chpl ? `Tier ${c.tier}` : c.status}</StatusBadge>}
-          sub={c.chpl ? "On the EU list of battlefield items" : "Not on the EU list of battlefield items"} />
-        <Kpi label="Exports vs 2017–21" onClick={() => onSection("route")}
-          value={<span className="text-xl font-bold leading-none tabular">{r.multiplier !== null ? times(r.multiplier) : r.emergent ? "New" : "—"}</span>}
-          sub={ytd?.ratio != null ? `Average since 2022. ${ytd.year} so far: ${times(ytd.ratio)} the same months of ${ytd.reference_year}.` : "Average since 2022."} />
+          value={<StatusBadge tone={itemTone(a)}>{c.chpl ? `Tier ${c.tier}` : c.status === "NOT LISTED" ? "Not on item list" : "Check parameters"}</StatusBadge>}
+          sub={c.chpl ? "EU battlefield item list" : undefined} />
+        <Kpi label="Exports vs pre-war" onClick={() => onSection("route")}
+          value={<span className="text-xl font-bold leading-none tabular">{r.multiplier !== null ? times(r.multiplier) : r.emergent ? "New flow" : "—"}</span>}
+          sub={ytd?.ratio != null ? `Since 2022 · ${ytd.year} so far vs ${ytd.reference_year}: ${times(ytd.ratio)}` : "Since 2022"} />
       </div>
     </section>
   );
@@ -156,9 +156,9 @@ export function AssessmentSummary({ a, onSection, listsDate, example }: {
 
 const SECTIONS: { id: Section; label: string; icon: typeof PackageIcon }[] = [
   { id: "overview", label: "Overview", icon: MapTrifoldIcon },
-  { id: "counterparty", label: "Counterparty", icon: UserFocusIcon },
-  { id: "goods", label: "Goods", icon: PackageIcon },
-  { id: "route", label: "Trade route", icon: ChartLineIcon },
+  { id: "counterparty", label: "Buyer", icon: UserFocusIcon },
+  { id: "goods", label: "Item", icon: PackageIcon },
+  { id: "route", label: "Route", icon: ChartLineIcon },
   { id: "briefing", label: "Briefing", icon: FileTextIcon },
 ];
 
@@ -188,7 +188,7 @@ export function SectionTabs({ value, onChange, a }: { value: Section; onChange: 
         {SECTIONS.map(({ id, label, icon: Icon }) => (
           <button key={id} id={`tab-${id}`} type="button" role="tab" aria-selected={value === id} aria-controls="section-panel"
             tabIndex={value === id ? 0 : -1} onClick={() => onChange(id)}
-            className={cn("flex shrink-0 items-center gap-1.5 border-b-2 px-2.5 py-2.5 text-[14px] transition-colors sm:px-3",
+            className={cn("flex shrink-0 items-center gap-1.5 border-b-2 px-2.5 py-2.5 text-[16px] transition-colors sm:px-3",
               value === id ? "border-foreground font-bold text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}>
             <Icon className="size-4 max-sm:hidden" aria-hidden /> {label}
             {dot[id] && <span className="size-2 rounded-full" style={{ background: toneVar[dot[id]!] }} aria-hidden />}

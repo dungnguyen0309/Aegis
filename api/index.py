@@ -20,7 +20,7 @@ from _lib import anomaly, config, hs_codes, jurisdiction, memo, mirror, radar, r
 
 app = FastAPI(
     title="Aegis API",
-    description="Open-Source Trade Intelligence & Dual-Use Sanctions Radar: entity screening, trade anomalies, compliance briefings.",
+    description="Open-Source Trade Intelligence & Dual-Use Sanctions Radar: sanctions screening, route risk, briefings.",
     version="1.0.0",
     docs_url="/api/docs",
     openapi_url="/api/openapi.json",
@@ -39,7 +39,7 @@ def _valid_hs(v: str) -> str:
 def _valid_intermediary(v: str) -> str:
     v = v.upper()
     if v not in config.INTERMEDIARIES:
-        raise ValueError("Unsupported intermediary country")
+        raise ValueError("Unsupported transit country")
     return v
 
 
@@ -47,7 +47,7 @@ def _valid_weights(v: dict[str, float] | None) -> dict[str, float] | None:
     if v is None:
         return None
     if set(v) - set(anomaly.WEIGHTS) or any(x < 0 or x > 100 for x in v.values()):
-        raise ValueError("Weights must use known components and lie between 0 and 100")
+        raise ValueError("Weights must be known components between 0 and 100")
     return v
 
 
@@ -59,7 +59,7 @@ class AssessRequest(BaseModel):
     exporter: str = config.DEFAULT_EXPORTER
     intermediary: str = Field(examples=["KG"])
     live: bool = False
-    weights: dict[str, float] | None = Field(default=None, description="Route-score weights; rescaled to 100")
+    weights: dict[str, float] | None = Field(default=None, description="Route risk weights; rescaled to 100")
 
     @field_validator("company")
     @classmethod
@@ -100,12 +100,12 @@ class AssessRequest(BaseModel):
 
 
 class CalculateRequest(BaseModel):
-    """What-if input for the route score: yearly exports entered by the user instead of fetched."""
+    """What-if input for route risk: yearly exports entered by the user instead of fetched."""
 
     hs: str = Field(examples=["848210"])
     intermediary: str = Field(examples=["KZ"])
     years: list[int] = Field(min_length=3, max_length=20, examples=[[2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025]])
-    values: list[float] = Field(description="Exports to the intermediary per year")
+    values: list[float] = Field(description="Exports to the transit country per year")
     russia: list[float] = Field(description="Direct exports to Russia per year")
     screening: Literal["CLEAN", "PARTIAL", "MATCH"] = "CLEAN"
     weights: dict[str, float] | None = None
@@ -245,7 +245,7 @@ async def briefing(req: AssessRequest) -> dict:
 def radar_view(exporter: str = Query(default=config.DEFAULT_EXPORTER)) -> dict:
     data = radar.matrix(exporter)
     if data is None:
-        raise HTTPException(404, "The radar covers the bundled exporters only (Germany, EU-27).")
+        raise HTTPException(404, "Radar covers Germany and EU-27 only.")
     return data
 
 
@@ -270,7 +270,7 @@ class BatchRequest(BaseModel):
 
 @app.post("/api/calculate")
 def calculate(req: CalculateRequest) -> dict:
-    """Route score and recommended action for user-entered yearly exports (same formulas as /api/assess)."""
+    """Route risk and action for user-entered yearly exports (same formulas as /api/assess)."""
     classification = hs_codes.classify(req.hs)
     series = {"years": req.years, "values": req.values, "russia": req.russia, "unit": "EUR"}
     route = anomaly.analyse(series, classification, req.intermediary, req.weights)
@@ -280,11 +280,15 @@ def calculate(req: CalculateRequest) -> dict:
 
 @app.post("/api/batch")
 async def batch(req: BatchRequest) -> dict:
-    """Screen up to 200 counterparties against the bundled lists; add item and route checks when given."""
+    """Screen up to 200 buyers against the snapshot lists; add item and route checks when given."""
     exporter = req.exporter if req.exporter in config.EXPORTERS else config.DEFAULT_EXPORTER
     out = []
     for row in req.rows:
-        cc = row.country.strip().upper()[:2] if row.country and row.country.strip() else None
+        issues: list[str] = []
+        raw_cc = (row.country or "").strip().upper()
+        cc = raw_cc if raw_cc in config.ISO2 else None
+        if raw_cc and not cc:
+            issues.append(f"Unknown country code '{row.country.strip()[:12]}', ignored.")
         entity = await sanctions.screen(row.company.strip(), cc, [], live=False)
         top = entity["subjects"][0]["matches"][:1]
         result = {
@@ -295,23 +299,38 @@ async def batch(req: BatchRequest) -> dict:
             "best_similarity": top[0]["score"] if top else None,
             "hs": None, "chpl_tier": None, "intermediary": None, "route_score": None, "route_band": None,
             "route_no_baseline": None,
-            "verdict": None,
+            "verdict": None, "issues": issues,
         }
-        hs = hs_codes.clean_hs(row.hs or "")
-        if hs_codes.HS_PATTERN.match(hs) and hs_codes.real_chapter(hs):
+        raw_hs = (row.hs or "").strip()
+        hs = hs_codes.clean_hs(raw_hs)
+        raw_inter = (row.intermediary or "").strip().upper()
+        if raw_hs and not hs_codes.HS_PATTERN.match(hs):
+            issues.append(f"HS code '{raw_hs[:12]}' is not six digits; item and route not checked.")
+        elif raw_hs and not hs_codes.real_chapter(hs):
+            issues.append(f"HS code '{raw_hs}' is outside HS chapters 01–97 (77 unused); item and route not checked.")
+        elif hs:
             c = hs_codes.classify(hs)
             result.update(hs=hs, chpl_tier=c["tier"])
-            inter = (row.intermediary or cc or "").strip().upper()[:2]
+            inter = raw_inter or cc or ""
             series = trade._from_bundle(exporter, inter, hs) if inter in config.INTERMEDIARIES else None
             if series:
                 route = anomaly.analyse(series, c, inter)
                 v = memo.decide(entity, route, c)
                 result.update(intermediary=inter, route_score=route["score"], route_band=route["band"],
                               route_no_baseline=route["no_baseline"], verdict=v["code"])
+            elif not inter:
+                issues.append("No transit country; route not checked.")
+            elif inter not in config.INTERMEDIARIES:
+                issues.append(f"'{inter[:12]}' is not a covered transit country; route not checked.")
+            else:
+                issues.append(f"No trade data for this item to {inter}; route not checked.")
+        else:
+            issues.append("No HS code; item and route not checked.")
         if result["verdict"] is None:
-            result["verdict"] = {"MATCH": "STOP", "PARTIAL": "HOLD"}.get(entity["status"], "STANDARD")
+            # Without the route check only the name was screened: a clean name is not a clean shipment
+            result["verdict"] = {"MATCH": "STOP", "PARTIAL": "HOLD"}.get(entity["status"], "NAME ONLY")
         out.append(result)
-    order = {"STOP": 0, "HOLD": 1, "RED FLAG": 2, "ELEVATED": 3, "STANDARD": 4}
+    order = {"STOP": 0, "HOLD": 1, "RED FLAG": 2, "ELEVATED": 3, "NAME ONLY": 4, "STANDARD": 5}
     out.sort(key=lambda r: (order[r["verdict"]], -(r["route_score"] or 0), -(r["best_similarity"] or 0)))
     summary = {code: sum(r["verdict"] == code for r in out) for code in order}
     return {"rows": out, "summary": summary, "exporter": exporter, "count": len(out)}

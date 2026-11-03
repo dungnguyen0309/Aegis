@@ -57,7 +57,7 @@ function Slider({ label, value, min, max, step, onChange, format }: {
 }) {
   return (
     <div>
-      <div className="mb-1 flex justify-between text-[13px]">
+      <div className="mb-1 flex justify-between text-[15px]">
         <span className="font-semibold">{label}</span>
         <span className="font-bold tabular">{format(value)}</span>
       </div>
@@ -123,19 +123,20 @@ export function CalculatorView({ reference, from }: { reference: Reference | nul
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Risk calculator"
-        description="Change the export figures and watch the route risk and recommended action update. Same formulas as the assessment."
+      <PageHeader title="Calculator"
         actions={<>
           <Button variant="outline" size="sm" onClick={reset}><ArrowCounterClockwiseIcon /> {from ? "Reset to assessment" : "Reset"}</Button>
           <Button variant="outline" size="sm" onClick={download}><DownloadSimpleIcon /> Download CSV</Button>
         </>} />
 
       <div className="grid gap-4 lg:grid-cols-[400px_minmax(0,1fr)]">
-        <Panel title="Inputs" subtitle={from ? `Started from the assessment of ${from.query.company}.` : "Example figures. Run an assessment to start from real data."}
-          className="lg:sticky lg:top-4 lg:self-start" bodyClassName="space-y-4">
+        <Panel title="Inputs" subtitle={from ? `From the assessment of ${from.query.company}` : "Example figures"}
+          // on desktop a plain column with a rule, like the Assess form, not a card that ends short of the results
+          className="lg:sticky lg:top-4 lg:self-start lg:border-0 lg:border-r lg:bg-transparent"
+          headerClassName="lg:pl-0 lg:pt-0" bodyClassName="space-y-4 lg:pl-0">
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="calc-hs" className="text-[13px] font-semibold">HS code</Label>
+              <Label htmlFor="calc-hs" className="text-[17px] font-semibold">HS code</Label>
               <Input id="calc-hs" list="calc-hs-list" inputMode="numeric" value={inputs.hs} maxLength={6} aria-invalid={!hsValid}
                 onChange={(e) => set({ hs: e.target.value.replace(/\D/g, "").slice(0, 6) })} />
               <datalist id="calc-hs-list">
@@ -143,7 +144,7 @@ export function CalculatorView({ reference, from }: { reference: Reference | nul
               </datalist>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="calc-via" className="text-[13px] font-semibold">Country</Label>
+              <Label htmlFor="calc-via" className="text-[17px] font-semibold">Transit country</Label>
               <Select value={inputs.intermediary} onValueChange={(v) => set({ intermediary: v })}>
                 <SelectTrigger id="calc-via" className="w-full"><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -152,29 +153,31 @@ export function CalculatorView({ reference, from }: { reference: Reference | nul
               </Select>
             </div>
           </div>
-          <p className="-mt-2 text-[12px] text-muted-foreground">
-            {hsInfo ? `Tier ${hsInfo.tier} · ${hsInfo.description}` : hsValid ? "Not on the EU battlefield item list" : "Six digits"}
+          <p className="-mt-2 text-[14px] text-muted-foreground">
+            {hsInfo ? `Tier ${hsInfo.tier} · ${hsInfo.description}` : hsValid ? "Not on item list" : "Six digits"}
           </p>
 
           <div className="space-y-1.5">
-            <span className="block text-[13px] font-semibold">Sanctions screening result</span>
+            <span className="block text-[17px] font-semibold">Sanctions screening</span>
             <Segmented value={inputs.screening} onChange={(v) => set({ screening: v })} options={[
               { value: "CLEAN", label: "No match" }, { value: "PARTIAL", label: "Possible match" }, { value: "MATCH", label: "Match" },
             ]} />
           </div>
 
-          <div className="space-y-3 border-t border-border pt-4">
+          <hr className="border-border" />
+          <div className="space-y-3">
             <Slider label={`Exports to ${countryName} since 2022`} value={toCountry} min={-2} max={2} step={0.05}
               onChange={setToCountry} format={(v) => times(2 ** v)} />
             <Slider label="Direct exports to Russia since 2022" value={toRussia} min={0} max={2} step={0.05}
               onChange={setToRussia} format={(v) => times(v)} />
           </div>
 
-          <div className="border-t border-border pt-4">
-            <div className="mb-2 text-[13px] font-semibold">Yearly exports ({sym} thousand)</div>
-            <table className="w-full text-[13px]">
+          <hr className="border-border" />
+          <div>
+            <div className="mb-2 text-[17px] font-semibold">Yearly exports ({sym} thousand)</div>
+            <table className="w-full text-[15px]">
               <thead>
-                <tr className="text-left text-[12px] text-muted-foreground">
+                <tr className="text-left text-[14px] text-muted-foreground">
                   <th className="pb-1 font-normal">Year</th>
                   <th className="pb-1 font-normal"><span className="inline-flex items-center gap-1"><Flag code={inputs.intermediary} size={14} /> {countryName}</span></th>
                   <th className="pb-1 font-normal"><span className="inline-flex items-center gap-1"><Flag code="RU" size={14} /> Russia</span></th>
@@ -183,7 +186,7 @@ export function CalculatorView({ reference, from }: { reference: Reference | nul
               <tbody>
                 {inputs.years.map((y, i) => (
                   <tr key={y} className={cn(y < SANCTIONS_YEAR && "text-muted-foreground", y === SANCTIONS_YEAR && "border-t-2 border-border")}>
-                    <td className="py-0.5 pr-2 tabular">{y}</td>
+                    <th scope="row" className="py-0.5 pr-2 text-left font-normal tabular">{y}</th>
                     {(["values", "russia"] as const).map((col) => (
                       <td key={col} className="py-0.5 pr-1">
                         <Input inputMode="decimal" value={inputs[col][i] ?? ""} className="h-7 text-right tabular"
@@ -199,8 +202,8 @@ export function CalculatorView({ reference, from }: { reference: Reference | nul
                 ))}
               </tbody>
             </table>
-            <p className="mt-2 text-[12px] text-muted-foreground">
-              Above the line: the {inputs.years[0]}–{SANCTIONS_YEAR - 1} pre-war baseline. The sliders scale the years from {SANCTIONS_YEAR} on.
+            <p className="mt-2 text-[14px] text-muted-foreground">
+              Above the line: pre-war ({inputs.years[0]}–{String(SANCTIONS_YEAR - 1).slice(2)})
             </p>
           </div>
         </Panel>
@@ -216,7 +219,7 @@ export function CalculatorView({ reference, from }: { reference: Reference | nul
               <section className={cn("border border-border bg-card transition-opacity", busy && "opacity-70")} aria-live="polite">
                 <div className="flex flex-wrap items-start justify-between gap-4 px-5 py-4">
                   <div>
-                    <div className="text-[12px] text-muted-foreground">Route risk</div>
+                    <div className="text-[14px] text-muted-foreground">Route risk</div>
                     <div className="mt-0.5 flex items-center gap-2">
                       <span className="text-4xl font-bold leading-none tabular">{r.score}</span>
                       <span className="text-muted-foreground">/ 100</span>
@@ -225,29 +228,29 @@ export function CalculatorView({ reference, from }: { reference: Reference | nul
                     </div>
                   </div>
                   <div className="flex flex-col items-start gap-1 sm:items-end">
-                    <span className="text-[12px] text-muted-foreground">Recommended action</span>
-                    <StatusBadge tone={verdictTone[result.verdict.code]} className="h-8 px-3 text-[13px]">{result.verdict.code}</StatusBadge>
+                    <span className="text-[14px] text-muted-foreground">Action</span>
+                    <StatusBadge tone={verdictTone[result.verdict.code]} className="h-8 px-3 text-[15px]">{result.verdict.code}</StatusBadge>
                   </div>
                 </div>
                 <div className="border-t border-border px-5 py-3">
-                  <p className="text-[15px] font-bold">{result.verdict.title}</p>
-                  {result.verdict.notes.map((n) => <p key={n} className="text-[13px] text-muted-foreground">{n}</p>)}
+                  <p className="text-[17px] font-bold">{result.verdict.title}</p>
+                  {result.verdict.notes.map((n) => <p key={n} className="text-[15px] text-muted-foreground">{n}</p>)}
                 </div>
                 <div className="grid grid-cols-2 gap-4 border-t border-border px-5 py-3 md:grid-cols-4">
-                  <Stat label="Pre-war average" value={money(r.baseline.mean, inputs.unit)} sub={`± ${money(r.baseline.std, inputs.unit)} a year`} />
-                  <Stat label="Since 2022 vs pre-war" value={r.multiplier !== null ? times(r.multiplier) : r.emergent ? "New flow" : "—"} />
+                  <Stat label="Pre-war exports a year" value={money(r.baseline.mean, inputs.unit)} sub={`± ${money(r.baseline.std, inputs.unit)}`} />
+                  <Stat label="Exports vs pre-war" value={r.multiplier !== null ? times(r.multiplier) : r.emergent ? "New flow" : "—"} />
                   <Stat label="Highest Z-score" value={r.z_max !== null ? r.z_max.toFixed(1) : "—"}
                     sub={r.z_max_year ? `${r.z_max_year} · unusual above ${r.threshold}` : undefined} />
                   <Stat label="Direct exports to Russia" value={r.russia_ratio !== null ? pct(r.russia_ratio - 1) : "—"} sub="since 2022 vs pre-war" />
                 </div>
-                {r.note && <p className="border-t border-border px-5 py-2 text-[13px] text-muted-foreground">{r.note}</p>}
+                {r.note && <p className="border-t border-border px-5 py-2 text-[15px] text-muted-foreground">{r.note}</p>}
               </section>
 
-              <Panel title={`Exports to ${countryName}`} subtitle="Bars above the yellow line are more than two standard deviations above the pre-war average.">
+              <Panel title={`Exports to ${countryName}`}>
                 <AnomalyChart route={r} partner={countryName} unit={inputs.unit} />
               </Panel>
 
-              <Panel title="Route risk breakdown" subtitle="Weights can be changed here too.">
+              <Panel title="Route risk breakdown">
                 <ScoreBreakdown r={r} defaults={reference?.weights ?? {}} onWeights={setWeights} />
               </Panel>
             </>

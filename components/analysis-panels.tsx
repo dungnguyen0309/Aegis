@@ -20,24 +20,24 @@ import { Flag } from "@/components/visuals";
 import { monthLabel, money, times, moneyTick, niceTicks } from "@/lib/format";
 import type { Mirror, Monthly, UnitValues, Unit } from "@/lib/types";
 
-const TICK = { fill: "var(--muted-foreground)", fontSize: 12, fontFamily: "var(--font-sans)" };
+const TICK = { fill: "var(--muted-foreground)", fontSize: 13, fontFamily: "var(--font-sans)" };
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 type TipProps = { active?: boolean; payload?: ReadonlyArray<{ payload?: unknown }> };
 
 export function Stat({ label, value, sub, tone }: { label: string; value: ReactNode; sub?: ReactNode; tone?: string }) {
   return (
     <div className="min-w-0">
-      <div className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
+      <div className="flex items-center gap-1.5 text-[14px] text-muted-foreground">
         {tone && <span className="size-2 shrink-0 rounded-full" style={{ background: tone }} aria-hidden />}{label}
       </div>
       <div className="text-xl font-bold leading-tight">{value}</div>
-      {sub && <div className="text-[12px] text-muted-foreground">{sub}</div>}
+      {sub && <div className="text-[14px] text-muted-foreground">{sub}</div>}
     </div>
   );
 }
 
 function TipBox({ children }: { children: ReactNode }) {
-  return <div className="min-w-40 border border-border bg-popover px-3 py-2 text-[12px] shadow-lg tabular">{children}</div>;
+  return <div className="min-w-40 border border-border bg-popover px-3 py-2 text-[14px] shadow-lg tabular">{children}</div>;
 }
 
 const ratioTone = (r: number | null) =>
@@ -56,11 +56,11 @@ export function MonthlyPanel({ m }: { m: Monthly | null }) {
     <div>
       <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
         <Stat label={`${ytd.year} so far (Jan–${MONTHS[ytd.through_month - 1]})`} value={money(ytd.value, m.unit)}
-          sub={ytd.ratio !== null ? `${times(ytd.ratio)} the same months of ${ytd.reference_year}` : "no 2021 reference"}
+          sub={ytd.ratio !== null ? `${times(ytd.ratio)} vs ${ytd.reference_year}` : `No ${ytd.reference_year} data`}
           tone={ratioTone(ytd.ratio)} />
         <Stat label="Last 12 months" value={money(last12.value, m.unit)}
           sub={last12.ratio !== null ? `${times(last12.ratio)} all of ${ytd.reference_year}` : "—"} tone={ratioTone(last12.ratio)} />
-        <Stat label="Unusual months" value={m.flagged.length} sub="above the pre-war range since March 2022"
+        <Stat label="Unusual months" value={m.flagged.length} sub="since March 2022"
           tone={m.flagged.length ? "var(--status-critical)" : undefined} />
         <Stat label="Latest month" value={monthLabel(m.latest)} sub={money(m.values.at(-1) ?? 0, m.unit)} />
       </div>
@@ -82,7 +82,7 @@ export function MonthlyPanel({ m }: { m: Monthly | null }) {
                 <TipBox>
                   <div className="font-bold">{monthLabel(d.mo)}</div>
                   <div>{money(d.value, m.unit, 2)}</div>
-                  {d.z !== null && <div className="text-muted-foreground">{d.z.toFixed(1)} standard deviations from the pre-war average</div>}
+                  {d.z !== null && <div className="text-muted-foreground">Z-score {d.z.toFixed(1)}</div>}
                 </TipBox>
               );
             }} />
@@ -94,9 +94,9 @@ export function MonthlyPanel({ m }: { m: Monthly | null }) {
           </BarChart>
         </ResponsiveContainer>
       </div>
-      <p className="mt-2 text-[12px] text-muted-foreground">
-        Grey: pre-war months ({monthLabel(m.baseline.from)}–{monthLabel(m.baseline.to)}). Red: more than two standard
-        deviations above the pre-war average. Seasons and single large orders also move monthly figures.
+      <p className="mt-2 text-[14px] text-muted-foreground">
+        Grey: pre-war ({monthLabel(m.baseline.from)}–{monthLabel(m.baseline.to)}). Red: unusual month, over 2 standard
+        deviations above pre-war. Seasons and single large orders also move monthly figures.
       </p>
     </div>
   );
@@ -140,8 +140,8 @@ export function PricePanel({ u, unit }: { u: UnitValues | null; unit: Unit }) {
           </LineChart>
         </ResponsiveContainer>
       </div>
-      <p className="mt-2 text-[12px] text-muted-foreground">
-        Grey line: pre-war level. A large shift can mean misdeclared goods or a different product mix.
+      <p className="mt-2 text-[14px] text-muted-foreground">
+        Grey line: pre-war. A large shift can mean misdeclared goods or a different product mix.
       </p>
     </div>
   );
@@ -150,13 +150,13 @@ export function PricePanel({ u, unit }: { u: UnitValues | null; unit: Unit }) {
 /* ---------------- mirror statistics ---------------- */
 
 const MIRROR = [
-  { key: "de", color: "var(--series-1)", label: (c: string) => `Germany reports shipping to ${c}` },
-  { key: "imp", color: "var(--series-3)", label: (c: string) => `${c} reports receiving from Germany` },
-  { key: "ru", color: "var(--series-2)", label: (c: string) => `${c} reports exporting to Russia` },
+  { key: "de", color: "var(--series-1)", label: (c: string) => `Germany: exports to ${c}` },
+  { key: "imp", color: "var(--series-3)", label: (c: string) => `${c}: imports from Germany` },
+  { key: "ru", color: "var(--series-2)", label: (c: string) => `${c}: exports to Russia` },
 ] as const;
 
 export function MirrorPanel({ m, partner, partnerCode }: { m: Mirror | null; partner: string; partnerCode: string }) {
-  if (!m) return <p className="py-8 text-center text-sm text-muted-foreground">Mirror data covers Germany as the exporter and the listed items.</p>;
+  if (!m) return <p className="py-8 text-center text-sm text-muted-foreground">Mirror data covers only Germany as exporter and items on the EU battlefield item list.</p>;
   const data = m.years.map((y, i) => ({ year: y, de: m.de_exports[i], imp: m.imports_from_de[i], ru: m.exports_to_ru[i] }));
   const mirrorTicks = niceTicks(Math.max(1, ...data.flatMap((d) => MIRROR.map((x) => d[x.key] ?? 0))) * 1.05);
   return (
@@ -164,13 +164,13 @@ export function MirrorPanel({ m, partner, partnerCode }: { m: Mirror | null; par
       <div className="mb-3 grid grid-cols-2 gap-3">
         <Stat label={m.gap_year ? `Reporting gap (${m.gap_year})` : "Reporting gap"}
           value={m.gap !== null ? `${(m.gap * 100).toFixed(0)}%` : "—"}
-          sub={`of Germany's reported exports not recorded by ${partner}`}
+          sub={`Germany's exports not recorded by ${partner}`}
           tone={m.gap !== null && m.gap >= 0.3 ? "var(--status-serious)" : undefined} />
         <Stat label={`${partner}'s exports to Russia`}
-          value={times(m.onward_multiplier)} sub="post-2022 vs pre-war average"
+          value={times(m.onward_multiplier)} sub="since 2022 vs pre-war"
           tone={m.onward_multiplier !== null && m.onward_multiplier >= 2 ? "var(--status-critical)" : undefined} />
       </div>
-      <div className="mb-2 flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-muted-foreground">
+      <div className="mb-2 flex flex-wrap gap-x-4 gap-y-1 text-[14px] text-muted-foreground">
         {MIRROR.map((s) => (
           <span key={s.key} className="inline-flex items-center gap-1.5">
             <span className="h-0.5 w-4" style={{ background: s.color }} />
@@ -211,9 +211,8 @@ export function MirrorPanel({ m, partner, partnerCode }: { m: Mirror | null; par
           </LineChart>
         </ResponsiveContainer>
       </div>
-      <p className="mt-2 text-[12px] text-muted-foreground">
-        UN Comtrade, USD. Gaps also come from valuation, timing and origin rules: treat them as questions to ask, not
-        as proof.
+      <p className="mt-2 text-[14px] text-muted-foreground">
+        UN Comtrade, USD. Valuation, timing and origin rules also cause gaps: treat them as questions, not proof.
       </p>
     </div>
   );

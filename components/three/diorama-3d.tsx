@@ -14,7 +14,7 @@ import type { Assessment } from "@/lib/types";
 
 const X = { exporter: -3.6, buyer: 0, russia: 3.6 };
 const HALF = 0.85; // half width of a plot
-const HOME = { pos: new THREE.Vector3(1.0, 3.1, 5.9), target: new THREE.Vector3(0, 0.5, 0.05) };
+const HOME = { pos: new THREE.Vector3(0.9, 2.75, 5.2), target: new THREE.Vector3(0, 0.45, 0.05) };
 const CONTAINER = ["#2a78d6", "#eb6834", "#0f766e", "#b45309", "#6250d6", "#475569"];
 
 type Pick = { title: ReactNode; lines: ReactNode[] };
@@ -362,16 +362,18 @@ export function Diorama3D({ a }: { a: Assessment }) {
     const unit = series.unit;
     pick(exp, { title: <>{q.exporter_name} · exporter</>, lines: [
       `HS ${a.classification.hs}${a.classification.description ? ` · ${a.classification.description}` : ""}`,
-      last ? `${money(last.value, unit)} to ${q.intermediary_name} in ${last.year}${route.multiplier !== null ? ` · ${route.multiplier.toFixed(1)}× pre-war` : ""}` : "",
+      last ? `${money(last.value, unit)} to ${q.intermediary_name} in ${last.year}` : "",
+      route.multiplier !== null ? `Exports vs pre-war: ${route.multiplier.toFixed(1)}×` : "",
     ] });
     pick(buy, { title: <>{q.company}</>, lines: [
-      `${regionName(buyerCountry)}${buyerCountry === q.intermediary ? " · buyer" : ` · via ${q.intermediary_name}`}`,
+      `Buyer country: ${regionName(buyerCountry)}`,
+      buyerCountry === q.intermediary ? "" : `Transit country: ${q.intermediary_name}`,
       `Sanctions screening: ${entityLabel[entity.status as keyof typeof entityLabel].toLowerCase()}${flagged ? ` (${entity.best_score.toFixed(0)}% similarity)` : ""}`,
       "Company mark is generated, not a real logo",
     ] });
     pick(ru, { title: <>Russia · sanctioned destination</>, lines: [
-      ruDrop !== null ? `Direct exports of this item ${ruDrop > 0 ? "−" : "+"}${Math.abs(ruDrop)}% since 2021` : "",
-      `Route risk ${route.score} / 100 · ${routeStatus(route.band, route.no_baseline).label.toLowerCase()}`,
+      ruDrop !== null ? `Direct exports to Russia: ${ruDrop > 0 ? "−" : "+"}${Math.abs(ruDrop)}% since 2021` : "",
+      `Route risk: ${route.score} / 100 · ${routeStatus(route.band, route.no_baseline).label.toLowerCase()}`,
     ] });
     [exp, buy, ru].forEach(mergeStatic);
     root.add(exp, buy, ru);
@@ -400,7 +402,7 @@ export function Diorama3D({ a }: { a: Assessment }) {
       vehicles.forEach((v, i) => {
         pick(v, { title: <>{mode === "sea" ? "Container ship" : mode === "air" ? "Cargo plane" : "Truck convoy"}</>, lines: [
           li === 0 ? `${MODE_LABEL[mode]} · ${q.exporter_name} → ${q.intermediary_name}` : `${MODE_LABEL[mode]} · ${q.intermediary_name} → Russia`,
-          li === 0 && mode === "sea" ? `${n} containers ≈ the surge multiple (illustrative)` : "Illustrative, not an observed shipment",
+          li === 0 && mode === "sea" ? `${n} containers ≈ exports vs pre-war (illustration)` : "Illustration, not an observed shipment",
         ] });
         v.userData.dynamic = true;
         g.add(v);
@@ -496,14 +498,14 @@ export function Diorama3D({ a }: { a: Assessment }) {
   return (
     <Frame3D hostRef={hostRef} stageRef={stageRef} failed={failed} tip={tip} className="h-[230px] bg-[var(--scene-sky-top)] sm:h-[330px]"
       label={`3D illustration: ${q.exporter_name} exports to ${q.company} in ${q.intermediary_name}, with a possible onward route to Russia`}
-      hint="Drag to look around · hover a building or vehicle"
+      hint="Drag to rotate · hover for details"
       overlay={
         <div className="pointer-events-none absolute inset-0 overflow-hidden max-sm:hidden">
           {labels.map((l) => (
             <div key={l.id} ref={(el) => {
               if (el) labelEls.current.set(l.id, el);
               else labelEls.current.delete(l.id);
-            }} className="absolute left-0 top-0 whitespace-nowrap text-[13px] text-muted-foreground opacity-0">{l.text}</div>
+            }} className="absolute left-0 top-0 whitespace-nowrap text-[15px] text-muted-foreground opacity-0">{l.text}</div>
           ))}
         </div>
       } />

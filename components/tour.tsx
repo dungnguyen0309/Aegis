@@ -5,18 +5,18 @@ import type { Section } from "@/components/assessment-summary";
 import { Button } from "@/components/ui/button";
 
 export const TOUR_STEPS: { target: string; section?: Section; title: string; body: string }[] = [
-  { target: "query", title: "Assessment form", body: "Enter the buyer, its owners, the HS code and the route, or pick an example. Live data fetches the latest Eurostat figures." },
-  { target: "verdict", title: "Result", body: "The recommended action and the four figures behind it. Click a figure to open its section." },
-  { target: "sections", title: "Sections", body: "Each tab covers one part of the check: counterparty, goods, trade route and the written briefing." },
-  { target: "map", section: "overview", title: "Trade corridors", body: "Click a flag to assess another country, or press Play to see export volumes change since 2017. The globe shows the same routes in 3D." },
-  { target: "scene", section: "overview", title: "Shipment", body: "The route and transport modes for this buyer, as an illustration. Switch between 3D and a flat drawing." },
-  { target: "entity", section: "counterparty", title: "Sanctions screening", body: "The buyer and its owners are matched against the EU, US and UN lists in any script. The company can also be looked up in the LEI register." },
-  { target: "network", section: "counterparty", title: "Connections", body: "Red links are matches. Click a listed name to open the official record." },
-  { target: "legal", section: "goods", title: "Goods", body: "Whether the HS code is on the EU battlefield item list, and which export rules apply." },
-  { target: "exports", section: "route", title: "Annual exports", body: "Exports compared with the 2017–21 average. Red bars are more than two standard deviations above it." },
-  { target: "score", section: "route", title: "Route risk", body: "Every part of the score is shown, and the weights can be changed." },
-  { target: "mirror", section: "route", title: "Cross-checks", body: "What the intermediary itself reports, the price per kg and the flows through every intermediary. Large gaps are a reason to ask questions." },
-  { target: "memo", section: "briefing", title: "Briefing", body: "A one-page summary of findings, legal exposure and next steps, ready to print." },
+  { target: "query", title: "Assessment form", body: "Enter the buyer, owners, HS code and route, or pick an example." },
+  { target: "verdict", title: "Result", body: "The action and the four figures behind it. Click a figure to open its section." },
+  { target: "sections", title: "Sections", body: "One tab per part of the check: buyer, item, route and briefing." },
+  { target: "map", section: "overview", title: "Freight corridors", body: "Click a flag to assess another transit country. Play shows export volumes year by year since 2017." },
+  { target: "scene", section: "overview", title: "Shipment", body: "Illustration, not an observed shipment." },
+  { target: "entity", section: "counterparty", title: "Sanctions screening", body: "The buyer and owners against the EU, US and UN lists, in any script, plus the LEI register." },
+  { target: "network", section: "counterparty", title: "Connections", body: "Red links are matches. Click a listed name to open its record." },
+  { target: "legal", section: "goods", title: "Item", body: "EU battlefield item list status and the export rules that apply." },
+  { target: "exports", section: "route", title: "Annual exports", body: "Exports vs pre-war (2017–21). Red bars: unusual years, more than two standard deviations above." },
+  { target: "score", section: "route", title: "Route risk", body: "Each part of the score, with adjustable weights." },
+  { target: "mirror", section: "route", title: "Cross-checks", body: "What the transit country reports, price per kg and all transit countries. Ask about large gaps." },
+  { target: "memo", section: "briefing", title: "Briefing", body: "Findings, legal exposure and next steps on one printable page." },
 ];
 
 type Rect = { top: number; left: number; width: number; height: number };
@@ -88,11 +88,11 @@ export function Tour({ onClose, onSection }: { onClose: () => void; onSection: (
       ) : <div className="absolute inset-0" style={{ background: "var(--tour-dim)" }} />}
       <div ref={card} className="absolute border border-border bg-popover p-4 shadow-2xl transition-all duration-300"
         style={{ top: cardTop, left: cardLeft, width: cardW }}>
-        <div className="text-[12px] text-muted-foreground">Step {i + 1} of {TOUR_STEPS.length}</div>
+        <div className="text-[14px] text-muted-foreground">Step {i + 1} of {TOUR_STEPS.length}</div>
         <h2 className="mt-0.5 text-lg font-bold">{step.title}</h2>
-        <p className="mt-1 text-[14px] leading-snug">{step.body}</p>
+        <p className="mt-1 text-[16px] leading-snug">{step.body}</p>
         <div className="mt-3 flex items-center justify-between">
-          <button type="button" onClick={onClose} className="text-[13px] text-muted-foreground hover:text-foreground">Skip tour</button>
+          <button type="button" onClick={onClose} className="text-[15px] text-muted-foreground hover:text-foreground">Skip tour</button>
           <div className="flex gap-2">
             {i > 0 && <Button size="sm" variant="outline" onClick={() => setI(i - 1)}>Back</Button>}
             <Button size="sm" data-primary onClick={() => (last ? onClose() : setI(i + 1))}>{last ? "Finish" : "Next"}</Button>

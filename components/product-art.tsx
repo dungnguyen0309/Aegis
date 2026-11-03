@@ -178,13 +178,13 @@ const ART: Record<string, ReactNode> = {
   ),
 };
 
-export function ProductArt({ hs, size = 40, className, framed = true }: {
-  hs: string; size?: number; className?: string; framed?: boolean;
+export function ProductArt({ hs, size = 40, className }: {
+  hs: string; size?: number; className?: string;
 }) {
   const kind = productKind(hs);
   return (
     <svg viewBox="0 0 40 40" width={size} height={size} role="img" aria-label={`${kind} illustration`}
-      className={cn("shrink-0", framed && "rounded-md bg-muted ring-1 ring-border", className)}>
+      className={cn("shrink-0", className)}>
       {ART[kind]}
     </svg>
   );

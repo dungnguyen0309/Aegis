@@ -161,7 +161,7 @@ async def screen(company: str, jurisdiction: str | None, ubos: list[str], live: 
                     matches = await _api_match(name, kind, jurisdiction)
                     await cache.set(key, matches, ttl=86400)
                 except (httpx.HTTPError, KeyError, ValueError):
-                    warning = "OpenSanctions API unavailable; screened against the bundled official lists."
+                    warning = "OpenSanctions API unavailable; screened against the snapshot lists."
                     source = snapshot
         if matches is None:
             matches = _local_match(name, kind, jurisdiction)

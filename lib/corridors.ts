@@ -40,13 +40,13 @@ export const CORRIDORS: Corridor[] = [
   // ---------------------------------------------------------------- EU -> intermediary
   {
     id: "suez-gulf", name: "Suez Canal sea route", mode: "sea", leg: "inbound", serves: ["AE"],
-    note: "Container shipping from North Sea ports through the Mediterranean and Red Sea to Jebel Ali.",
+    note: "From North Sea ports via the Mediterranean and Red Sea to Jebel Ali.",
     path: [...EU_TO_GIBRALTAR, ...MED_TO_SUEZ, ...TO_HORMUZ],
     stops: [["Suez Canal", 32.4, 30.5], ["Jebel Ali", 55.03, 25.02]],
   },
   {
     id: "cape", name: "Cape of Good Hope diversion", mode: "sea", leg: "inbound", serves: ["AE"],
-    note: "The long way round Africa, used by many carriers since the Red Sea attacks of late 2023.",
+    note: "Around Africa, used by many carriers since the Red Sea attacks of late 2023.",
     path: [...EU_TO_GIBRALTAR.slice(0, 8), [-15.5, 28.5], [-19.0, 14.5], [-12.0, 4.0], [0.0, -3.0], [7.0, -12.0],
       [11.0, -22.0], [18.4, -35.0], [26.0, -36.0], [45.0, -28.0], [55.0, -18.0], [60.0, -5.0], [62.0, 8.0],
       [61.0, 20.0], [58.5, 24.5], [56.4, 26.5], [55.03, 25.02]],
@@ -54,7 +54,7 @@ export const CORRIDORS: Corridor[] = [
   },
   {
     id: "suez-asia", name: "Suez–Malacca sea route", mode: "sea", leg: "inbound", serves: ["CN", "HK"],
-    note: "Container shipping through Suez, the Indian Ocean and the Strait of Malacca to Hong Kong and Shanghai.",
+    note: "Via Suez, the Indian Ocean and the Strait of Malacca to Hong Kong and Shanghai.",
     path: [...EU_TO_GIBRALTAR, ...MED_TO_SUEZ, [55.0, 11.0], [65.0, 9.0], [77.0, 6.0], [81.0, 5.3], [88.0, 6.0],
       [96.0, 6.0], [100.5, 3.0], [104.0, 1.2], [108.5, 8.5], [112.0, 15.0], [114.2, 22.2], [119.5, 24.5],
       [122.0, 31.0]],
@@ -62,7 +62,7 @@ export const CORRIDORS: Corridor[] = [
   },
   {
     id: "med-turkey", name: "Mediterranean sea route", mode: "sea", leg: "inbound", serves: ["TR"],
-    note: "Short-sea shipping to Turkish ports through the Aegean and the Dardanelles.",
+    note: "Short-sea shipping to Turkish ports via the Aegean and the Dardanelles.",
     path: [...EU_TO_GIBRALTAR, [-2.5, 36.2], [5.0, 37.6], [11.8, 37.0], [18.0, 35.5], [22.5, 36.0], [25.3, 37.6],
       [25.8, 39.5], [26.4, 40.15], [28.0, 40.7], [28.98, 41.0]],
     stops: [["Istanbul", 28.98, 41.01]],
@@ -77,7 +77,7 @@ export const CORRIDORS: Corridor[] = [
   {
     id: "middle-corridor", name: "Middle Corridor (Trans-Caspian route)", mode: "rail", leg: "inbound",
     serves: ["GE", "AZ", "KZ", "KG", "UZ", "TJ", "AM"],
-    note: "Rail with Black Sea and Caspian ferries via Georgia and Azerbaijan; volumes surged after 2022.",
+    note: "Rail with Black Sea and Caspian ferries via Georgia and Azerbaijan; volumes up sharply since 2022.",
     path: [...DANUBE_RAIL, [28.65, 44.17], [33.0, 43.6], [38.0, 42.9], [41.67, 42.15], [44.79, 41.72], [46.36, 40.68],
       [49.87, 40.41], [50.6, 41.8], [51.2, 43.65], [55.2, 45.3], [65.5, 44.85], [69.6, 42.3], [74.6, 42.87],
       [76.9, 43.25]],
@@ -92,7 +92,7 @@ export const CORRIDORS: Corridor[] = [
   },
   {
     id: "turkey-caucasus", name: "Black Sea coast road", mode: "road", leg: "inbound", serves: ["GE", "AM", "AZ"],
-    note: "Trucks from Istanbul along Türkiye's Black Sea coast to the Sarp crossing and Tbilisi.",
+    note: "Trucks from Istanbul along the Black Sea coast to the Sarp crossing and Tbilisi.",
     path: [[28.98, 41.01], [32.0, 41.2], [36.33, 41.29], [39.72, 41.0], [41.56, 41.52], [44.79, 41.72]],
     stops: [["Sarp crossing", 41.56, 41.52], ["Tbilisi", 44.79, 41.72]],
   },
@@ -105,8 +105,8 @@ export const CORRIDORS: Corridor[] = [
   {
     id: "northern", name: "Northern route via Belarus and Russia", mode: "rail", leg: "restricted",
     serves: ["KZ", "KG", "UZ", "TJ"],
-    note: "The pre-2022 overland route. EU sanctions now restrict transit through Russia for these goods, "
-      + "which pushed trade onto the Middle Corridor.",
+    note: "The pre-war overland route. EU sanctions now restrict transit through Russia for these goods, "
+      + "pushing trade onto the Middle Corridor.",
     path: [[13.4, 52.52], [21.01, 52.23], [23.69, 52.1], [27.56, 53.9], [32.05, 54.78], MOSCOW, [50.1, 53.2],
       [55.1, 51.77], [57.2, 50.28], [64.0, 50.6], [71.43, 51.13]],
     stops: [["Brest–Terespol", 23.69, 52.1]],
@@ -115,8 +115,7 @@ export const CORRIDORS: Corridor[] = [
   // ---------------------------------------------------------------- intermediary -> Russia
   {
     id: "eaeu-north", name: "EAEU internal border", mode: "rail", leg: "onward", serves: ["KZ", "KG"],
-    note: "No customs controls inside the Eurasian Economic Union: goods cleared in Kazakhstan or "
-      + "Kyrgyzstan can move on to Russia unchecked.",
+    note: "No customs checks inside the EAEU: goods cleared in Kazakhstan or Kyrgyzstan can move on to Russia unchecked.",
     path: [[76.9, 43.25], [74.98, 46.85], [71.43, 51.13], [69.15, 54.87], [65.34, 55.44], ...URALS_TO_MOSCOW],
     stops: [["Astana", 71.43, 51.13], ["Petropavl", 69.15, 54.87], ["Moscow", ...MOSCOW]],
   },
@@ -140,7 +139,7 @@ export const CORRIDORS: Corridor[] = [
   },
   {
     id: "instc", name: "North–South corridor via Iran", mode: "sea", leg: "onward", serves: ["AE"],
-    note: "Shipping to Bandar Abbas, Iranian rail to the Caspian and on to Astrakhan; expanded by Russia and Iran since 2022.",
+    note: "Sea to Bandar Abbas, Iranian rail to the Caspian, then Astrakhan; expanded by Russia and Iran since 2022.",
     path: [[55.03, 25.02], [56.0, 26.3], [56.27, 27.18], [54.37, 31.9], [51.39, 35.69], [49.47, 37.47], [50.8, 40.5],
       [50.5, 43.5], [49.6, 45.4], ...VOLGA_TO_MOSCOW],
     stops: [["Bandar Abbas", 56.27, 27.18], ["Tehran", 51.39, 35.69], ["Astrakhan", 48.03, 46.35], ["Moscow", ...MOSCOW]],

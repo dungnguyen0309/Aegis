@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRightIcon, CubeIcon, DownloadSimpleIcon, ListChecksIcon, SpinnerGapIcon, TableIcon, UploadSimpleIcon, XIcon } from "@phosphor-icons/react";
+import { ArrowRightIcon, CubeIcon, DownloadSimpleIcon, ListChecksIcon, SpinnerGapIcon, TableIcon, UploadSimpleIcon, WarningIcon, XIcon } from "@phosphor-icons/react";
 import { lazy3D } from "@/components/three/lazy";
 import { useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { Segmented } from "@/components/corridor-panel";
@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PageHeader, Panel } from "@/components/panel";
 import { ProductArt } from "@/components/product-art";
-import { StatusBadge } from "@/components/status";
+import { sentenceCase, StatusBadge } from "@/components/status";
 import { CompanyMark, Flag } from "@/components/visuals";
 import { api } from "@/lib/api";
 import { entityLabel, entityTone, verdictSolid, verdictTone, routeStatus } from "@/lib/format";
@@ -28,6 +28,14 @@ Wide World Importers,AM,854232,AM
 Tailspin Toys GmbH,DE,950300,
 Kalashnikov Concern,RU,,`;
 
+/** What parseCsv and the /batch endpoint read from each column. */
+const COLUMNS = [
+  ["company", "Yes", "Buyer name, any script", "Northwind Components LLP"],
+  ["country", "No", "Buyer country, two-letter code", "KZ"],
+  ["hs", "No", "Six-digit HS code. Needed for route risk", "848210"],
+  ["intermediary", "No", "Transit country, two-letter code. If blank, the buyer country is used", "KZ"],
+];
+
 function SanctionsCell({ r }: { r: BatchRowOut }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -44,9 +52,19 @@ function ItemCell({ r }: { r: BatchRowOut }) {
     <div className="flex items-center gap-2">
       <ProductArt hs={r.hs} size={24} />
       <span className="tabular">{r.hs}</span>
-      <span className="text-muted-foreground">{r.chpl_tier ? `Tier ${r.chpl_tier}` : "Not listed"}</span>
+      <span className="text-muted-foreground">{r.chpl_tier ? `Tier ${r.chpl_tier}` : "Not on item list"}</span>
     </div>
   ) : <span className="text-faint">—</span>;
+}
+
+/** What the server could not use from this row, so a partial result is never mistaken for a full one. */
+function Issues({ r }: { r: BatchRowOut }) {
+  if (!r.issues.length) return null;
+  return (
+    <ul className="mt-1 space-y-0.5 text-[15px] text-warning-ink">
+      {r.issues.map((t) => <li key={t} className="flex gap-1.5"><WarningIcon className="mt-0.5 size-3.5 shrink-0" aria-hidden />{t}</li>)}
+    </ul>
+  );
 }
 
 function RouteCell({ r }: { r: BatchRowOut }) {
@@ -88,13 +106,13 @@ function parseCsv(text: string): { rows: BatchRowIn[]; short: number; extra: num
 }
 
 function toCsv(result: BatchResult): string {
-  const head = ["verdict", "company", "country", "sanctions_status", "best_match", "lists", "similarity", "hs", "chpl_tier", "intermediary", "route_score", "route_band", "route_no_baseline"];
+  const head = ["verdict", "company", "country", "sanctions_status", "best_match", "lists", "similarity", "hs", "chpl_tier", "intermediary", "route_score", "route_band", "route_no_baseline", "issues"];
   const esc = (v: unknown) => {
     const s = v === null || v === undefined ? "" : String(v);
     return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
   const lines = result.rows.map((r) => [r.verdict, r.company, r.country, r.entity_status, r.best_match, r.best_lists.join(" "),
-    r.best_similarity, r.hs, r.chpl_tier, r.intermediary, r.route_score, r.route_band, r.route_no_baseline].map(esc).join(","));
+    r.best_similarity, r.hs, r.chpl_tier, r.intermediary, r.route_score, r.route_band, r.route_no_baseline, r.issues.join(" ")].map(esc).join(","));
   return [head.join(","), ...lines].join("\n");
 }
 
@@ -102,6 +120,8 @@ function toCsv(result: BatchResult): string {
 export interface BatchState {
   text: string;
   result: BatchResult | null;
+  /** The text the result was screened from: when it differs from `text`, the result is out of date. */
+  ran?: string;
 }
 
 export function BatchView({ state, onState, onAssess, onPrefetch }: {
@@ -113,7 +133,7 @@ export function BatchView({ state, onState, onAssess, onPrefetch }: {
   const intent = useIntent();
   const { text, result } = state;
   const setText = (t: string) => onState((s) => ({ ...s, text: t }));
-  const setResult = (r: BatchResult | null) => onState((s) => ({ ...s, result: r }));
+  const setResult = (r: BatchResult | null, ran: string) => onState((s) => ({ ...s, result: r, ran }));
   const [mode, setMode] = useState<"table" | "3d">("table");
   const [only, setOnly] = useState<VerdictCode | null>(null);
   const shown = useMemo(() => (result ? result.rows.filter((r) => !only || r.verdict === only) : []), [result, only]);
@@ -121,13 +141,16 @@ export function BatchView({ state, onState, onAssess, onPrefetch }: {
   const [error, setError] = useState<string | null>(null);
   const file = useRef<HTMLInputElement>(null);
   const { rows, short, extra } = parseCsv(text);
+  const stale = result !== null && state.ran !== undefined && text !== state.ran;
+  const flagged = result ? result.rows.filter((r) => r.issues.length).length : 0;
 
   const run = async () => {
+    const screened = text;
     setLoading(true);
     setError(null);
     setOnly(null);
     try {
-      setResult(await api.batch(rows, "DE"));
+      setResult(await api.batch(rows, "DE"), screened);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Screening failed");
     } finally {
@@ -143,17 +166,16 @@ export function BatchView({ state, onState, onAssess, onPrefetch }: {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Batch screening"
-        description="Screen up to 200 counterparties against the EU, US and UN lists. Add an HS code and a route for the full check." />
+      <PageHeader title="Batch screening" description="Up to 200 buyers" />
 
-      <Panel title="Counterparties" subtitle={<>CSV columns: <b>company</b> (required), country, hs, intermediary. Paste below or upload a file.</>}>
+      <Panel title="Buyers">
         <textarea value={text} onChange={(e) => setText(e.target.value)} rows={8} spellCheck={false}
-          placeholder="company,country,hs,intermediary" aria-label="Counterparties as CSV"
-          className="w-full resize-y border border-input bg-transparent px-3 py-2 text-[13px] tabular outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/50" />
+          placeholder="company,country,hs,intermediary" aria-label="Buyers as CSV"
+          className="w-full resize-y border border-input bg-transparent px-3 py-2 text-[15px] tabular outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring" />
         {(short > 0 || extra > 0) && (
-          <p className="mt-2 text-[13px] text-muted-foreground" role="status">
-            {extra > 0 && `Only the first 200 rows are screened; ${extra} more ${extra === 1 ? "was" : "were"} left out. `}
-            {short > 0 && `${short} row${short === 1 ? " has" : "s have"} no company name of at least 2 characters and ${short === 1 ? "is" : "are"} skipped.`}
+          <p className="mt-2 text-[15px] text-muted-foreground" role="status">
+            {extra > 0 && `First 200 rows screened; ${extra} left out. `}
+            {short > 0 && `${short} row${short === 1 ? "" : "s"} skipped: name missing or under 2 characters.`}
           </p>
         )}
         <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -165,13 +187,38 @@ export function BatchView({ state, onState, onAssess, onPrefetch }: {
             {loading ? <SpinnerGapIcon className="animate-spin" /> : <ListChecksIcon />}
             {loading ? "Screening…" : `Screen ${rows.length} row${rows.length === 1 ? "" : "s"}`}
           </Button>
-          {error && <span className="text-[13px] text-destructive">{error}</span>}
+          {error && <span className="text-[15px] text-destructive">{error}</span>}
         </div>
       </Panel>
 
+      {!result && (
+        <Panel title="Columns" subtitle="Header row optional" bodyClassName="p-0">
+          <Table className="text-[15px]">
+            <TableHeader>
+              <TableRow>
+                <TableHead className="pl-4">Column</TableHead>
+                <TableHead>Required</TableHead>
+                <TableHead>What to enter</TableHead>
+                <TableHead className="pr-4">Example</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {COLUMNS.map(([name, needed, what, example]) => (
+                <TableRow key={name}>
+                  <TableCell className="pl-4 font-bold">{name}</TableCell>
+                  <TableCell>{needed}</TableCell>
+                  <TableCell className="whitespace-normal text-muted-foreground">{what}</TableCell>
+                  <TableCell className="whitespace-normal pr-4 tabular">{example}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Panel>
+      )}
+
       {result && (
         <Panel title="Results" tour="cube"
-          subtitle={`${result.count} counterpart${result.count === 1 ? "y" : "ies"}, most severe first.${mode === "3d" ? " Click a point to open its assessment." : ""}`}
+          subtitle={`${result.count} buyer${result.count === 1 ? "" : "s"}, most severe first`}
           action={<>
             <Segmented value={mode} onChange={setMode} options={[
               { value: "table", label: "Table", icon: <TableIcon className="size-4" /> },
@@ -179,16 +226,28 @@ export function BatchView({ state, onState, onAssess, onPrefetch }: {
             ]} />
             <Button size="sm" variant="outline" onClick={download}><DownloadSimpleIcon /> Download CSV</Button>
           </>}>
+          {/* Always mounted, so screen readers announce the text when the list changes */}
+          <p role="status" className={stale ? "mb-3 flex items-center gap-2 border border-[color-mix(in_srgb,var(--status-warning)_55%,transparent)] bg-[color-mix(in_srgb,var(--status-warning)_12%,transparent)] px-3 py-2 text-[16px]" : "sr-only"}>
+            {stale && <>
+              <WarningIcon className="size-4 shrink-0 text-warning-ink" aria-hidden />
+              List changed since this screening.
+            </>}
+          </p>
+          {flagged > 0 && mode === "table" && (
+            <p className="mb-3 text-[16px] text-muted-foreground">
+              {flagged} row{flagged === 1 ? "" : "s"} partly checked
+            </p>
+          )}
           <div className="mb-3 flex flex-wrap gap-1.5">
             {(Object.keys(result.summary) as VerdictCode[]).filter((k) => result.summary[k] > 0).map((k) => (
               <button key={k} type="button" onClick={() => setOnly(only === k ? null : k)} aria-pressed={only === k}
-                title={only === k ? "Show all rows" : `Show only ${k}`}
+                title={only === k ? "Show all rows" : `Show only ${sentenceCase(k)}`}
                 className={cn("transition-opacity", only && only !== k && "opacity-40 hover:opacity-80")}>
                 <StatusBadge tone={verdictTone[k]} solid={verdictSolid(k)}>{`${result.summary[k]} ${k}`}</StatusBadge>
               </button>
             ))}
             {only && (
-              <button type="button" onClick={() => setOnly(null)} className="inline-flex items-center gap-1 text-[12px] text-muted-foreground hover:text-foreground">
+              <button type="button" onClick={() => setOnly(null)} className="inline-flex items-center gap-1 text-[14px] text-muted-foreground hover:text-foreground">
                 <XIcon className="size-3.5" /> Show all
               </button>
             )}
@@ -196,10 +255,7 @@ export function BatchView({ state, onState, onAssess, onPrefetch }: {
           {mode === "3d" ? (
             <>
               <RiskCube3D rows={shown} onAssess={onAssess} />
-              <p className="mt-2 text-[13px] text-muted-foreground">
-                Left to right: sanctions-match score. Up: route risk. Front to back: item tier. Diamonds have a sanctions
-                match; shaded slabs mark the Stop and Hold zones.
-              </p>
+              <p className="mt-2 text-[15px] text-muted-foreground">Diamonds: sanctions match. Shaded: Stop and Hold zones.</p>
             </>
           ) : (
           <>
@@ -214,13 +270,14 @@ export function BatchView({ state, onState, onAssess, onPrefetch }: {
                   </div>
                   <StatusBadge tone={verdictTone[r.verdict]} solid={verdictSolid(r.verdict)}>{r.verdict}</StatusBadge>
                 </div>
-                <dl className="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-[13px]">
-                  <dt className="text-muted-foreground">Sanctions</dt><dd><SanctionsCell r={r} /></dd>
+                <Issues r={r} />
+                <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-[15px]">
+                  <dt className="text-muted-foreground">Sanctions screening</dt><dd><SanctionsCell r={r} /></dd>
                   <dt className="text-muted-foreground">Item</dt><dd><ItemCell r={r} /></dd>
                   <dt className="text-muted-foreground">Route risk</dt><dd><RouteCell r={r} /></dd>
                 </dl>
                 {onAssess && (
-                  <Button size="xs" variant="outline" onClick={() => onAssess(r)} aria-label={`Open the assessment of ${r.company}`}
+                  <Button size="xs" variant="outline" onClick={() => onAssess(r)} aria-label={`Assess ${r.company}`}
                     {...intent.on(() => onPrefetch?.(r))}>
                     Assess <ArrowRightIcon />
                   </Button>
@@ -229,34 +286,35 @@ export function BatchView({ state, onState, onAssess, onPrefetch }: {
             ))}
           </ul>
           <div className="overflow-x-auto max-md:hidden">
-            <Table className="text-[13px]">
+            <Table className="text-[15px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>Action</TableHead>
-                  <TableHead>Company</TableHead>
+                  <TableHead>Buyer</TableHead>
                   <TableHead>Sanctions screening</TableHead>
                   <TableHead>Item</TableHead>
                   <TableHead>Route risk</TableHead>
-                  {onAssess && <TableHead className="w-24"><span className="sr-only">Open</span></TableHead>}
+                  {onAssess && <TableHead className="w-24"><span className="sr-only">Assess</span></TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {shown.map((r, i) => (
                   <TableRow key={i}>
                     <TableCell><StatusBadge tone={verdictTone[r.verdict]} solid={verdictSolid(r.verdict)}>{r.verdict}</StatusBadge></TableCell>
-                    <TableCell>
+                    <TableCell className="whitespace-normal">
                       <div className="flex items-center gap-2">
                         <CompanyMark name={r.company} size={24} flagged={r.entity_status !== "CLEAN"} />
                         <span className="font-bold">{r.company}</span>
                         {r.country && <Flag code={r.country} size={14} />}
                       </div>
+                      <Issues r={r} />
                     </TableCell>
                     <TableCell className="whitespace-normal"><SanctionsCell r={r} /></TableCell>
                     <TableCell><ItemCell r={r} /></TableCell>
                     <TableCell><RouteCell r={r} /></TableCell>
                     {onAssess && (
                       <TableCell className="text-right">
-                        <Button size="xs" variant="ghost" onClick={() => onAssess(r)} aria-label={`Open the assessment of ${r.company}`}
+                        <Button size="xs" variant="ghost" onClick={() => onAssess(r)} aria-label={`Assess ${r.company}`}
                           {...intent.on(() => onPrefetch?.(r))}>
                           Assess <ArrowRightIcon />
                         </Button>

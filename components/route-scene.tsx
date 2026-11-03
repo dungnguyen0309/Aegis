@@ -290,12 +290,12 @@ export function RouteScene({ a, view }: { a: Assessment; view: "3d" | "flat" }) 
         )}
       </svg>
 
-      <div className="mt-1 grid grid-cols-3 gap-3 text-center text-[12px] leading-snug">
+      <div className="mt-1 grid grid-cols-3 gap-3 text-center text-[14px] leading-snug">
         <div className="flex flex-col items-center gap-1">
           <div className="flex items-center gap-1.5 font-bold"><Flag code={q.exporter} /> {q.exporter_name}</div>
           <div className="text-muted-foreground">Exporter · HS {a.classification.hs}</div>
           {last && <div className="tabular">{money(last.value, series.unit)} in {last.year}
-            {route.multiplier !== null && <span className="text-muted-foreground"> · {route.multiplier.toFixed(1)}× pre-war</span>}</div>}
+            {route.multiplier !== null && <span className="text-muted-foreground"> · Exports vs pre-war: {route.multiplier.toFixed(1)}×</span>}</div>}
         </div>
         <div className="flex flex-col items-center gap-1">
           <div className="flex items-center gap-1.5 font-bold">
@@ -303,8 +303,8 @@ export function RouteScene({ a, view }: { a: Assessment; view: "3d" | "flat" }) 
             <span className="max-w-[16ch] truncate sm:max-w-none">{q.company}</span>
           </div>
           <div className="flex items-center gap-1.5 text-muted-foreground">
-            <Flag code={buyerCountry} /> {regionName(buyerCountry)}
-            {buyerCountry === q.intermediary ? " · buyer" : ` · via ${q.intermediary_name}`}
+            Buyer · <Flag code={buyerCountry} /> {regionName(buyerCountry)}
+            {buyerCountry !== q.intermediary && ` · Transit country: ${q.intermediary_name}`}
           </div>
           <StatusBadge tone={entityTone[entity.status]}>{entityLabel[entity.status]}</StatusBadge>
         </div>
@@ -313,7 +313,7 @@ export function RouteScene({ a, view }: { a: Assessment; view: "3d" | "flat" }) 
           <div className="text-muted-foreground">Sanctioned destination</div>
           {ruDrop !== null && <div className="tabular">Direct exports {ruDrop > 0 ? "−" : "+"}{Math.abs(ruDrop)}%</div>}
           <StatusBadge tone={routeStatus(route.band, route.no_baseline).tone}>
-            <span className="max-sm:hidden">Route</span> {sentenceCase(routeStatus(route.band, route.no_baseline).label)}
+            <span className="max-sm:hidden">Route risk</span> {sentenceCase(routeStatus(route.band, route.no_baseline).label)}
           </StatusBadge>
         </div>
       </div>

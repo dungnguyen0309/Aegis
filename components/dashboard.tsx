@@ -29,7 +29,7 @@ import { cn } from "@/lib/utils";
 import { ViewBoundary } from "@/components/view-boundary";
 
 const Item3D = lazy3D(() => import("@/components/three/item-3d").then((m) => m.Item3D), "3D model", "h-[300px]");
-// The chart library is only needed on the Trade route tab and in the calculator
+// The chart library is only needed on the Route tab and in the calculator
 const RouteSection = dynamic(() => import("@/components/route-section").then((m) => m.RouteSection), {
   ssr: false, loading: () => <Loading3D className="h-[480px]" label="Loading charts…" />,
 });
@@ -59,6 +59,8 @@ export function Dashboard() {
   const [pending, setPending] = useState("");
   const [batch, setBatch] = useState<BatchState>({ text: "", result: null });
   const lastRun = useRef<FormState>(PRESETS[0].form);
+  // The same form as state, so the Run button can tell during render whether the result on screen is for it
+  const [ranForm, setRanForm] = useState<FormState>(PRESETS[0].form);
   // The address the page was opened with (read once) and whether its state has been applied yet
   const initialUrl = useRef<string | null>(null);
   const urlApplied = useRef(false);
@@ -87,6 +89,7 @@ export function Dashboard() {
       const a = await api.assess(toRequest(f, w));
       if (id !== seq.current) return;
       setAssessment(a);
+      setRanForm(f);
       setOffline(false);
       setMemo(null);
       void fetchMemo(f, w, id);
@@ -179,6 +182,7 @@ export function Dashboard() {
       .then((a) => {
         if (id !== seq.current) return;
         setAssessment(a);
+        setRanForm(start);
         void fetchMemo(start, null, id);
       })
       .catch((e: Error) => { if (id === seq.current) onFailure(e); })
@@ -221,22 +225,24 @@ export function Dashboard() {
 
   return (
     <div className="flex min-h-screen flex-col">
+      {/* Focus moves directly: a #content fragment would add a history entry and fire popstate, which restores views */}
+      <a href="#content" onClick={(e) => { e.preventDefault(); document.getElementById("content")?.focus(); }} className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-3 focus:z-50 focus:border focus:border-border focus:bg-card focus:px-3 focus:py-2 focus:text-[15px]">Skip to content</a>
       <AppHeader reference={reference} view={view} onView={setView} onTour={startTour} />
 
       {view === "radar" && (
-        <main className="mx-auto w-full max-w-[1440px] flex-1 px-4 py-5 sm:px-6">
+        <main id="content" tabIndex={-1} className="mx-auto w-full max-w-[1440px] flex-1 px-4 py-5 outline-none sm:px-6">
           <ViewBoundary label="Radar"><RadarView onAssess={assessFromRadar} onPrefetch={prefetchFromRadar} tiers={reference?.tiers} /></ViewBoundary>
         </main>
       )}
 
       {view === "calc" && (
-        <main className="mx-auto w-full max-w-[1440px] flex-1 px-4 py-5 sm:px-6">
+        <main id="content" tabIndex={-1} className="mx-auto w-full max-w-[1440px] flex-1 px-4 py-5 outline-none sm:px-6">
           <ViewBoundary label="Calculator"><CalculatorView reference={reference} from={assessment} /></ViewBoundary>
         </main>
       )}
 
       {view === "batch" && (
-        <main className="mx-auto w-full max-w-[1440px] flex-1 px-4 py-5 sm:px-6">
+        <main id="content" tabIndex={-1} className="mx-auto w-full max-w-[1440px] flex-1 px-4 py-5 outline-none sm:px-6">
           <ViewBoundary label="Batch screening"><BatchView state={batch} onState={setBatch} onAssess={assessFromBatch} onPrefetch={(r) => prefetch(batchPatch(r))} /></ViewBoundary>
         </main>
       )}
@@ -244,13 +250,13 @@ export function Dashboard() {
       {view === "assess" && (
         <main className="mx-auto grid w-full max-w-[1440px] flex-1 gap-5 px-4 py-5 sm:px-6 lg:grid-cols-[300px_minmax(0,1fr)]">
           {/* Height cap = viewport minus the header and page padding, so the sticky Run footer is on screen from the start */}
-          <aside className="order-2 lg:order-none lg:sticky lg:top-4 lg:max-h-[calc(100dvh-6rem)] lg:scroll-pb-28 lg:self-start lg:overflow-y-auto" data-tour="query">
+          <aside className="order-2 lg:order-none lg:sticky lg:top-4 lg:max-h-[calc(100dvh-6rem)] lg:scroll-pb-28 lg:self-start lg:overflow-y-auto lg:border-r lg:border-border lg:pr-5" data-tour="query">
             <QueryPanel reference={reference} form={form} setForm={(f) => { setForm(f); setActive(null); }}
               onRun={(f) => run(f, weights, true)} onPrefetch={(f) => api.prefetchAssess(toRequest(f, weights))}
-              loading={loading} active={active} />
+              loading={loading} active={active} upToDate={!!a && JSON.stringify(form) === JSON.stringify(ranForm)} />
           </aside>
 
-          <div className={cn("order-1 min-w-0 space-y-4 transition-opacity lg:order-none", loading && a && "opacity-60")}>
+          <div id="content" tabIndex={-1} className={cn("order-1 min-w-0 space-y-4 outline-none transition-opacity lg:order-none", loading && a && "opacity-60")}>
             {offline ? (
               <div className="flex items-center gap-2 border border-[color-mix(in_srgb,var(--status-warning)_55%,transparent)] bg-[color-mix(in_srgb,var(--status-warning)_12%,transparent)] px-4 py-2 text-sm">
                 <SpinnerGapIcon className="size-4 shrink-0 animate-spin text-warning-ink" /> {new ApiUnavailable().message}
@@ -266,7 +272,7 @@ export function Dashboard() {
             <p role="status" className={loading && a ? "flex items-center gap-2 border border-border bg-card px-4 py-2 text-sm" : "sr-only"}>
               {loading && a && <>
                 <SpinnerGapIcon className="size-4 shrink-0 animate-spin motion-reduce:animate-none" aria-hidden />
-                Running the assessment for {pending}.{pending !== a.query.company && ` The result below is for ${a.query.company}.`}
+                Running assessment for {pending}.{pending !== a.query.company && ` On screen: ${a.query.company}.`}
               </>}
             </p>
 
@@ -274,7 +280,7 @@ export function Dashboard() {
               loading && !offline ? (
                 <div className="space-y-4" aria-busy="true">
                   <p className="flex items-center gap-2 text-sm text-muted-foreground" role="status">
-                    <SpinnerGapIcon className="size-4 animate-spin motion-reduce:animate-none" aria-hidden /> Running assessment…
+                    <SpinnerGapIcon className="size-4 animate-spin motion-reduce:animate-none" aria-hidden /> Running…
                   </p>
                   <Skeleton className="h-[236px] border border-border motion-reduce:animate-none" />
                   <Skeleton className="h-10 motion-reduce:animate-none" />
@@ -282,7 +288,7 @@ export function Dashboard() {
                 </div>
               ) : (
                 <div className="grid h-96 place-items-center border border-border bg-card text-sm text-muted-foreground">
-                  {offline ? "Waiting for the analysis service…" : "Fill in the form and run an assessment."}
+                  {offline ? "Waiting for the analysis service…" : "No assessment yet."}
                 </div>
               )
             ) : (
@@ -298,19 +304,19 @@ export function Dashboard() {
                   <ViewBoundary label="Overview" resetKey={a.generated_at}>
                     <KeyFindings memo={loading ? null : memo} loading={memoLoading || loading} error={memoError}
                       onRetry={generateMemo} onSection={setSection} />
-                    <Panel title="Trade corridors" subtitle={`Main sea, rail, road and air routes from ${exporterName} via ${partner} to Russia.`} tour="map"
+                    <Panel title="Freight corridors" tour="map"
                       action={<Segmented value={mapView} onChange={setMapView} options={[
                         { value: "globe", label: "Globe", icon: <GlobeHemisphereEastIcon className="size-4" /> },
-                        { value: "flat", label: "Flat map", icon: <MapTrifoldIcon className="size-4" /> },
+                        { value: "flat", label: "Flat", icon: <MapTrifoldIcon className="size-4" /> },
                       ]} />}>
                       <CorridorPanel view={mapView} exporter={a.query.exporter} exporterName={exporterName} flows={a.flows}
                         intermediary={a.query.intermediary} intermediaryName={partner} onSelect={(code) => rerun({ intermediary: code })} />
                     </Panel>
-                    <Panel title="Shipment" subtitle="Illustration of the route and transport modes, not an observed shipment."
+                    <Panel title="Shipment" subtitle="Illustration, not an observed shipment"
                       bodyClassName="px-2 pb-4 pt-3 sm:px-4" tour="scene"
                       action={<Segmented value={sceneView} onChange={setSceneView} options={[
                         { value: "3d", label: "3D", icon: <CubeIcon className="size-4" /> },
-                        { value: "flat", label: "Illustration", icon: <ImageIcon className="size-4" /> },
+                        { value: "flat", label: "Flat", icon: <ImageIcon className="size-4" /> },
                       ]} />}>
                       <RouteScene a={a} view={sceneView} />
                     </Panel>
@@ -318,19 +324,19 @@ export function Dashboard() {
                 )}
 
                 {section === "counterparty" && (
-                  <ViewBoundary label="Counterparty" resetKey={a.generated_at}>
+                  <ViewBoundary label="Buyer" resetKey={a.generated_at}>
                     <EntityPanel e={a.entity} company={a.query.company} jurisdiction={a.query.jurisdiction} />
-                    <Panel title="Connections" subtitle="The buyer, its owners, the three sanctions lists and any listed names that matched." tour="network">
+                    <Panel title="Connections" tour="network">
                       <Network3D e={a.entity} company={a.query.company} jurisdiction={a.query.jurisdiction} />
                     </Panel>
                   </ViewBoundary>
                 )}
 
                 {section === "goods" && (
-                  <ViewBoundary label="Goods" resetKey={a.generated_at}>
+                  <ViewBoundary label="Item" resetKey={a.generated_at}>
                     <div className="grid gap-4 lg:grid-cols-2">
                       <LegalPanel c={a.classification} />
-                      <Panel title="3D model" subtitle="Generic model of the item family, not to scale." tour="item3d">
+                      <Panel title="3D model" subtitle="Generic model, not to scale" tour="item3d">
                         <Item3D hs={a.classification.hs} description={a.classification.description} />
                       </Panel>
                     </div>
@@ -338,7 +344,7 @@ export function Dashboard() {
                 )}
 
                 {section === "route" && (
-                  <ViewBoundary label="Trade route" resetKey={a.generated_at}>
+                  <ViewBoundary label="Route" resetKey={a.generated_at}>
                     <RouteSection a={a} reference={reference} onWeights={reweigh}
                       onCalculator={() => { setView("calc"); window.scrollTo({ top: 0 }); }} />
                   </ViewBoundary>
@@ -359,9 +365,9 @@ export function Dashboard() {
       )}
 
       <footer className="border-t border-border">
-        <div className="mx-auto flex max-w-[1440px] flex-wrap items-center justify-between gap-x-6 gap-y-1 px-4 py-4 text-[12px] text-muted-foreground sm:px-6">
+        <div className="mx-auto flex max-w-[1440px] flex-wrap items-center justify-between gap-x-6 gap-y-1 px-4 py-4 text-[14px] text-muted-foreground sm:px-6">
           <span>
-            Data: Eurostat Comext{reference?.monthly.months && ` (to ${monthLabel(reference.monthly.months[1])})`} · EU, US OFAC and UN
+            Data: Eurostat Comext{reference?.monthly.months && ` (to ${monthLabel(reference.monthly.months[1])})`} · EU, US and UN
             sanctions lists{reference && ` (${reference.sanctions.retrieved})`} · EU battlefield item list{reference && ` (${reference.chpl_version})`} · UN Comtrade · GLEIF
           </span>
           <span>Not legal advice · Built by Tuan Dung Nguyen</span>

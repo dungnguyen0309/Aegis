@@ -32,12 +32,12 @@ function graph(e: Entity, company: string, jurisdiction: string | null) {
   const nodes: Node[] = [], edges: Edge[] = [];
   const add = (n: Omit<Node, "pos">) => nodes.push({ ...n, pos: new THREE.Vector3() });
   HUBS.forEach((h) => add({ id: `hub:${h.id}`, kind: "hub", label: h.label, size: 0.42, pinned: true,
-    info: <><div className="font-bold">{h.full}</div><div className="text-muted-foreground">Screened against the official list</div></> }));
+    info: <div className="font-bold">{h.full}</div> }));
   e.subjects.forEach((s, i) => {
     const id = `s:${i}`;
     const isCompany = s.role === "Company";
     add({ id, kind: isCompany ? "company" : "person", label: s.name, size: isCompany ? 0.56 : 0.42, pinned: isCompany, flagged: s.status !== "CLEAN",
-      info: <><div className="text-[12px] text-faint">{s.role}</div><div className="font-bold">{s.name}</div>
+      info: <><div className="text-[14px] text-faint">{s.role}</div><div className="font-bold">{s.name}</div>
         <div className="mt-1"><StatusBadge tone={entityTone[s.status]}>{entityLabel[s.status]}{s.status !== "CLEAN" && ` · ${s.best_score.toFixed(0)}%`}</StatusBadge></div></> });
     if (!isCompany) edges.push({ a: "s:0", b: id, kind: "owner" });
     HUBS.forEach((h) => edges.push({ a: id, b: `hub:${h.id}`, kind: "screened" }));
@@ -45,12 +45,11 @@ function graph(e: Entity, company: string, jurisdiction: string | null) {
       const mid = `m:${m.id}`;
       if (!nodes.some((n) => n.id === mid)) {
         add({ id: mid, kind: "match", label: m.name, size: 0.34, flagged: true, url: m.url, individual: m.kind === "P",
-          info: <><div className="text-[12px] text-faint">Listed {m.kind === "P" ? "person" : "entity"}</div>
+          info: <><div className="text-[14px] text-faint">Listed {m.kind === "P" ? "person" : "organisation"}</div>
             <div className="font-bold">{m.name}</div>
             <div>{m.lists.join(" · ")}{m.program && ` · ${m.program}`}</div>
             {m.countries.length > 0 && <div className="flex items-center gap-1">{m.countries.map((c) => <Flag key={c} code={c} size={14} />)} {m.countries.map((c) => regionName(c)).join(", ")}</div>}
-            {m.listed_since && <div className="text-muted-foreground">Listed since {m.listed_since}</div>}
-            <div className="text-muted-foreground">Click to open the official record</div></> });
+            {m.listed_since && <div className="text-muted-foreground">Listed since {m.listed_since}</div>}</> });
         m.lists.forEach((l) => HUBS.some((h) => h.id === l) && edges.push({ a: mid, b: `hub:${l}`, kind: "listed" }));
       }
       edges.push({ a: id, b: mid, kind: "match", score: m.score });
@@ -58,7 +57,7 @@ function graph(e: Entity, company: string, jurisdiction: string | null) {
   });
   if (jurisdiction) {
     add({ id: "country", kind: "country", label: regionName(jurisdiction), size: 0.32,
-      info: <><div className="flex items-center gap-1.5 font-bold"><Flag code={jurisdiction} size={14} />{regionName(jurisdiction)}</div><div className="text-muted-foreground">Buyer&apos;s jurisdiction</div></> });
+      info: <><div className="flex items-center gap-1.5 font-bold"><Flag code={jurisdiction} size={14} />{regionName(jurisdiction)}</div><div className="text-muted-foreground">Buyer country</div></> });
     edges.push({ a: "s:0", b: "country", kind: "country" });
   }
   return { nodes, edges };
@@ -228,10 +227,10 @@ export function Network3D({ e, company, jurisdiction }: { e: Entity; company: st
   return (
     <div>
       <Frame3D hostRef={hostRef} stageRef={stageRef} failed={failed} tip={tip} className="h-[360px] bg-card sm:h-[400px]"
-        label={`3D link analysis of ${company}: owners, sanctions lists and ${matches} listed names that matched`}
-        hint="Drag to rotate · hover a node · click a listed name for the official record"
+        label={`3D connections of ${company}: owners, EU, US and UN lists and ${matches} listed names`}
+        hint="Drag to rotate · click a listed name to open its record"
         tools={!reduce && (
-          <ToolButton label={spinning ? "Stop turning" : "Turn automatically"} onClick={() => setSpinning(!spinning)}>
+          <ToolButton label={spinning ? "Stop rotating" : "Rotate automatically"} onClick={() => setSpinning(!spinning)}>
             {spinning ? <PauseIcon className="size-3.5" /> : <PlayIcon className="size-3.5" />}
           </ToolButton>
         )}
@@ -241,18 +240,17 @@ export function Network3D({ e, company, jurisdiction }: { e: Entity; company: st
               <div key={n.id} ref={(el) => {
                 if (el) labelEls.current.set(n.id, el);
                 else labelEls.current.delete(n.id);
-              }} className={`absolute left-0 top-0 max-w-[150px] truncate text-center opacity-0 [text-shadow:0_0_3px_var(--card),0_0_3px_var(--card)] ${n.kind === "match" ? "text-[12px] text-muted-foreground" : "text-[12px] font-bold text-foreground"} ${n.kind === "hub" ? "max-sm:hidden" : ""}`}>
+              }} className={`absolute left-0 top-0 max-w-[150px] truncate text-center opacity-0 [text-shadow:0_0_3px_var(--card),0_0_3px_var(--card)] ${n.kind === "match" ? "text-[14px] text-muted-foreground" : "text-[14px] font-bold text-foreground"} ${n.kind === "hub" ? "max-sm:hidden" : ""}`}>
                 {n.kind === "hub" ? HUBS.find((h) => `hub:${h.id}` === n.id)?.full : n.label}
               </div>
             ))}
           </div>
         } />
-      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-muted-foreground">
-        {matches === 0 && <span className="font-bold text-foreground">No listed name at 70% similarity or more.</span>}
+      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[14px] text-muted-foreground">
         <span className="inline-flex items-center gap-1.5"><span className="h-0.5 w-5" style={{ background: "var(--status-critical)" }} />Match ≥ 93%</span>
         <span className="inline-flex items-center gap-1.5"><span className="h-0.5 w-5" style={{ background: "var(--status-serious)" }} />Possible match 80–93%</span>
-        <span className="inline-flex items-center gap-1.5"><span className="h-0.5 w-5" style={{ background: "var(--chart-baseline)" }} />Weak, screened or ownership link</span>
-        <span>Line thickness: name similarity</span>
+        <span className="inline-flex items-center gap-1.5"><span className="h-0.5 w-5" style={{ background: "var(--chart-baseline)" }} />Weak match, screening or owner link</span>
+        <span>Line thickness: similarity</span>
       </div>
     </div>
   );

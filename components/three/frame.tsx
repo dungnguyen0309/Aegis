@@ -112,8 +112,8 @@ export function ToolButton({ label, onClick, active, children }: {
 }) {
   return (
     <button type="button" onClick={onClick} aria-label={label} title={label} aria-pressed={active}
-      className={cn("inline-flex h-7 min-w-7 items-center justify-center gap-1 border border-border px-1.5 text-[12px]",
-        active ? "bg-primary text-primary-foreground" : "bg-card text-foreground hover:bg-muted")}>
+      className={cn("inline-flex h-7 min-w-7 items-center justify-center gap-1 px-1.5 text-[14px]",
+        active ? "bg-primary text-primary-foreground" : "text-foreground hover:bg-muted")}>
       {children}
     </button>
   );
@@ -132,22 +132,23 @@ export function Frame3D({ hostRef, stageRef, label, className, tip, failed, tool
   hint?: string;
 }) {
   return (
-    <div className={cn("relative overflow-hidden rounded-sm ring-1 ring-border", className)}>
+    <div className={cn("relative overflow-hidden rounded-sm border border-border", className)}>
       <div ref={hostRef} role="img" aria-label={label} className="absolute inset-0 cursor-grab active:cursor-grabbing" />
       {overlay}
       {failed ? (
         <div className="absolute inset-0 grid place-items-center p-6 text-center text-sm text-muted-foreground">
-          This 3D view needs WebGL, which is turned off or unavailable in this browser.
+          WebGL is off or unavailable in this browser.
         </div>
       ) : (
         <>
-          <div className="absolute right-2 top-2 z-10 flex flex-wrap justify-end gap-1">
+          {/* One toolbar, not a row of separate tiles */}
+          <div className="absolute right-2 top-2 z-10 flex divide-x divide-border border border-border bg-card">
             {tools}
             <ToolButton label="Zoom in" onClick={() => stageRef.current?.zoom(0.8)}><MagnifyingGlassPlusIcon className="size-3.5" /></ToolButton>
             <ToolButton label="Zoom out" onClick={() => stageRef.current?.zoom(1.25)}><MagnifyingGlassMinusIcon className="size-3.5" /></ToolButton>
             <ToolButton label="Reset view" onClick={() => stageRef.current?.home()}><ArrowCounterClockwiseIcon className="size-3.5" /></ToolButton>
           </div>
-          <div className="pointer-events-none absolute bottom-2 left-3 z-10 text-[12px] text-faint">
+          <div className="pointer-events-none absolute bottom-2 left-3 z-10 text-[14px] text-faint">
             <span className="[@media(hover:none)]:hidden">{hint ?? "Drag to rotate · Ctrl + scroll or pinch to zoom"}</span>
             {/* Touch screens have no hover or Ctrl: keep the drag part and name the pinch */}
             <span className="hidden [@media(hover:none)]:inline">{(hint ?? "Drag to rotate").split(" · ")[0]} · pinch to zoom</span>
@@ -155,7 +156,7 @@ export function Frame3D({ hostRef, stageRef, label, className, tip, failed, tool
         </>
       )}
       {tip && (
-        <div className="pointer-events-none absolute z-20 w-max max-w-[260px] border border-border bg-popover px-3 py-2 text-[12px] leading-snug text-popover-foreground shadow-lg tabular"
+        <div className="pointer-events-none absolute z-20 w-max max-w-[260px] border border-border bg-popover px-3 py-2 text-[14px] leading-snug text-popover-foreground shadow-lg tabular"
           style={{
             left: tip.x, top: tip.y,
             transform: `translate(${tip.left ? "calc(-100% - 14px)" : "14px"}, ${tip.up ? "calc(-100% - 10px)" : "14px"})`,

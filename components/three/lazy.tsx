@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 /** Placeholder with the same size as the view it stands in for. */
 export function Loading3D({ className, label = "Loading 3D view…" }: { className?: string; label?: string }) {
   return (
-    <div className={cn("grid place-items-center rounded-sm bg-muted/40 text-sm text-muted-foreground ring-1 ring-border", className)}>
+    <div className={cn("grid place-items-center rounded-sm bg-muted/40 text-sm text-muted-foreground border border-border", className)}>
       {label}
     </div>
   );

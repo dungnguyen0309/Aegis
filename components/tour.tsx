@@ -5,17 +5,17 @@ import type { Section } from "@/components/assessment-summary";
 import { Button } from "@/components/ui/button";
 
 export const TOUR_STEPS: { target: string; section?: Section; title: string; body: string }[] = [
-  { target: "query", title: "Assessment form", body: "Enter the buyer, owners, HS code and route, or pick an example." },
-  { target: "verdict", title: "Result", body: "The action and the four figures behind it. Click a figure to open its section." },
-  { target: "sections", title: "Sections", body: "One tab per part of the check: buyer, item, route and briefing." },
+  { target: "query", title: "Assessment form", body: "Enter the buyer, owners and directors, HS code and route, or pick an example." },
+  { target: "verdict", title: "Action", body: "The action and the four figures behind it. Click a figure to open its section." },
+  { target: "sections", title: "Sections", body: "One tab per part of the check: overview, buyer, item, route and briefing." },
   { target: "map", section: "overview", title: "Freight corridors", body: "Click a flag to assess another transit country. Play shows export volumes year by year since 2017." },
-  { target: "scene", section: "overview", title: "Shipment", body: "Illustration, not an observed shipment." },
-  { target: "entity", section: "counterparty", title: "Sanctions screening", body: "The buyer and owners against the EU, US and UN lists, in any script, plus the LEI register." },
+  { target: "scene", section: "overview", title: "Shipment", body: "Exporter, buyer and a possible onward route to Russia. In 3D, hover a site or vehicle for details." },
+  { target: "entity", section: "counterparty", title: "Sanctions screening", body: "The buyer, owners and directors against the EU, US and UN lists, in any script, plus the LEI register." },
   { target: "network", section: "counterparty", title: "Connections", body: "Red links are matches. Click a listed name to open its record." },
   { target: "legal", section: "goods", title: "Item", body: "EU battlefield item list status and the export rules that apply." },
-  { target: "exports", section: "route", title: "Annual exports", body: "Exports vs pre-war (2017–21). Red bars: unusual years, more than two standard deviations above." },
+  { target: "exports", section: "route", title: "Annual exports", body: "Exports vs pre-war (2017–21). Red bars: unusual years, more than two standard deviations above the pre-war mean." },
   { target: "score", section: "route", title: "Route risk", body: "Each part of the score, with adjustable weights." },
-  { target: "mirror", section: "route", title: "Cross-checks", body: "What the transit country reports, price per kg and all transit countries. Ask about large gaps." },
+  { target: "mirror", section: "route", title: "Cross-checks", body: "What the transit country reports, price per kg and all transit countries. Ask the buyer about large gaps." },
   { target: "memo", section: "briefing", title: "Briefing", body: "Findings, legal exposure and next steps on one printable page." },
 ];
 

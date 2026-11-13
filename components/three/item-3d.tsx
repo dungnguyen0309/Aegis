@@ -163,7 +163,7 @@ export function Item3D({ hs, description }: { hs: string; description: string | 
     <div>
       <Frame3D hostRef={hostRef} stageRef={stageRef} failed={failed} tip={tip} className="h-[300px] bg-card"
         label={`3D model of HS ${hs}${description ? `, ${description}` : ""}`}
-        hint="Drag to rotate · hover a part to name it"
+        hint="Drag to rotate"
         overlay={!shown && !failed && (
           <div className="pointer-events-none absolute inset-0 grid place-items-center text-sm text-muted-foreground">Loading model…</div>
         )}

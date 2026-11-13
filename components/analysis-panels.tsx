@@ -46,7 +46,7 @@ const ratioTone = (r: number | null) =>
 /* ---------------- monthly exports ---------------- */
 
 export function MonthlyPanel({ m }: { m: Monthly | null }) {
-  if (!m) return <p className="py-8 text-center text-sm text-muted-foreground">No monthly data for this combination.</p>;
+  if (!m) return <p className="py-8 text-center text-sm text-muted-foreground">No monthly data for this item and route.</p>;
   const flagged = new Set(m.flagged);
   const data = m.months.map((mo, i) => ({ mo, value: m.values[i], z: m.z[i], flagged: flagged.has(mo), pre: mo <= m.baseline.to }));
   const ticks = niceTicks(Math.max(...m.values, m.baseline.upper, 1) * 1.05);
@@ -59,7 +59,7 @@ export function MonthlyPanel({ m }: { m: Monthly | null }) {
           sub={ytd.ratio !== null ? `${times(ytd.ratio)} vs ${ytd.reference_year}` : `No ${ytd.reference_year} data`}
           tone={ratioTone(ytd.ratio)} />
         <Stat label="Last 12 months" value={money(last12.value, m.unit)}
-          sub={last12.ratio !== null ? `${times(last12.ratio)} all of ${ytd.reference_year}` : "—"} tone={ratioTone(last12.ratio)} />
+          sub={last12.ratio !== null ? `${times(last12.ratio)} vs all of ${ytd.reference_year}` : "—"} tone={ratioTone(last12.ratio)} />
         <Stat label="Unusual months" value={m.flagged.length} sub="since March 2022"
           tone={m.flagged.length ? "var(--status-critical)" : undefined} />
         <Stat label="Latest month" value={monthLabel(m.latest)} sub={money(m.values.at(-1) ?? 0, m.unit)} />
@@ -95,8 +95,8 @@ export function MonthlyPanel({ m }: { m: Monthly | null }) {
         </ResponsiveContainer>
       </div>
       <p className="mt-2 text-[14px] text-muted-foreground">
-        Grey: pre-war ({monthLabel(m.baseline.from)}–{monthLabel(m.baseline.to)}). Red: unusual month, over 2 standard
-        deviations above pre-war. Seasons and single large orders also move monthly figures.
+        Grey: pre-war ({monthLabel(m.baseline.from)}–{monthLabel(m.baseline.to)}). Red: unusual month (Z-score over 2).
+        Seasons and large single orders also move monthly figures.
       </p>
     </div>
   );
@@ -106,7 +106,7 @@ export function MonthlyPanel({ m }: { m: Monthly | null }) {
 
 export function PricePanel({ u, unit }: { u: UnitValues | null; unit: Unit }) {
   if (!u || u.baseline === null) {
-    return <p className="py-8 text-center text-sm text-muted-foreground">No weight data for this combination.</p>;
+    return <p className="py-8 text-center text-sm text-muted-foreground">No weight data for this item and route.</p>;
   }
   const data = u.years.map((y, i) => ({ year: y, perKg: u.per_kg[i] }));
   const fmt = (v: number) => (v >= 1000 ? money(v, unit, 1) : `${unit === "EUR" ? "€" : "$"}${v.toFixed(v < 10 ? 2 : 0)}`);
@@ -212,7 +212,7 @@ export function MirrorPanel({ m, partner, partnerCode }: { m: Mirror | null; par
         </ResponsiveContainer>
       </div>
       <p className="mt-2 text-[14px] text-muted-foreground">
-        UN Comtrade, USD. Valuation, timing and origin rules also cause gaps: treat them as questions, not proof.
+        UN Comtrade, USD. Gaps can also come from valuation, timing and origin rules.
       </p>
     </div>
   );

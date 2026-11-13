@@ -51,7 +51,7 @@ export function LegalPanel({ c }: { c: Classification }) {
 function SimilarityBar({ score }: { score: number }) {
   const tone = score >= 93 ? "var(--status-critical)" : score >= 80 ? "var(--status-serious)" : "var(--chart-baseline)";
   return (
-    <div className="flex items-center justify-end gap-2" title={score >= 93 ? "Match" : score >= 80 ? "Possible match" : "Listed for review"}>
+    <div className="flex items-center justify-end gap-2" title={score >= 93 ? "Match" : score >= 80 ? "Possible match" : "Review"}>
       <div className="h-1.5 w-16 rounded-full bg-muted">
         <div className="h-full rounded-full" style={{ width: `${Math.max(4, score)}%`, background: tone }} />
       </div>
@@ -65,7 +65,7 @@ const ROLE: Record<string, string> = { Company: "Buyer", "UBO / director": "Owne
 
 export function EntityPanel({ e, company, jurisdiction }: { e: Entity; company: string; jurisdiction: string | null }) {
   return (
-    <Panel title="Sanctions screening" subtitle={`EU, US and UN lists. ${SCREENING_RULE}`} tour="entity"
+    <Panel title="Sanctions screening" subtitle={SCREENING_RULE} tour="entity"
       action={<span className="text-[14px] text-faint">{e.source}</span>}>
       <div className="space-y-4">
         {e.subjects.map((s) => (
@@ -176,7 +176,7 @@ export function ScoreBreakdown({ r, defaults, onWeights }: {
           {r.custom_weights ? "Custom weights" : "Default weights"} · Route risk {r.score}
         </p>
         <div className="flex gap-1.5">
-          {r.custom_weights && <Button size="xs" variant="ghost" onClick={reset}>Reset</Button>}
+          {r.custom_weights && <Button size="xs" variant="ghost" onClick={reset}>Reset weights</Button>}
           <Button size="xs" variant={adjust ? "secondary" : "outline"} onClick={() => setAdjust(!adjust)}>
             <SlidersHorizontalIcon /> {adjust ? "Done" : "Adjust weights"}
           </Button>
@@ -225,9 +225,8 @@ export function ScoreBreakdown({ r, defaults, onWeights }: {
             </span>
           </div>
         )}
-        <p className="text-[14px] text-faint">
-          {sens.equal.band === r.band ? "Same band with equal weights." : "Band changes with equal weights; read with care."}
-        </p>
+        {/* Only the exception needs saying: the equal-weights band is shown just above */}
+        {sens.equal.band !== r.band && <p className="text-[14px] text-faint">Band changes with equal weights; read with care.</p>}
       </div>
 
       {jp && (

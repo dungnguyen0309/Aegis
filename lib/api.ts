@@ -4,8 +4,8 @@ import type { Assessment, AssessRequest, BatchResult, BatchRowIn, CalcRequest, C
 export class ApiUnavailable extends Error {
   constructor() {
     super(process.env.NODE_ENV === "development"
-      ? "The analysis service (FastAPI) is not running. Start the app with npm run dev; this page reconnects on its own."
-      : "The analysis service is not responding. This page will reconnect on its own.");
+      ? "The analysis service (FastAPI) is not running. Start the app with npm run dev, then try again."
+      : "The analysis service is not responding. Try again in a moment.");
   }
 }
 
@@ -40,13 +40,13 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
       const body = await res.json();
       fromApi = "detail" in body;
       if (typeof body.detail === "string") detail = body.detail;
-      else if (Array.isArray(body.detail)) detail = body.detail.map((d: { msg: string }) => d.msg).join("; ");
+      else if (Array.isArray(body.detail)) detail = body.detail.map((d: { msg: string }) => { const m = d.msg.replace(/^Value error, /, ""); return /[.!?]$/.test(m) ? m : `${m}.`; }).join(" ");
     } catch {
       /* not a FastAPI error body */
     }
     // A bare 5xx with no FastAPI body usually means the backend is down (the dev proxy answers 500)
     if (!fromApi && res.status >= 500 && !(await healthy())) throw new ApiUnavailable();
-    throw new Error(fromApi ? detail : `The analysis service returned an error (${detail}). Please try again.`);
+    throw new Error(fromApi ? detail : `The analysis service returned an error (${detail}). Try again.`);
   }
   return res.json() as Promise<T>;
 }

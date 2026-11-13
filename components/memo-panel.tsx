@@ -118,7 +118,7 @@ export function MemoPanel({ memo, loading, error, onGenerate, stale }: {
           <FileTextIcon className="size-8 text-faint" />
           <Button onClick={onGenerate} disabled={loading}>
             {loading ? <SpinnerGapIcon className="animate-spin" /> : <FileTextIcon />}
-            {loading ? "Drafting…" : "Generate briefing"}
+            {loading ? "Drafting briefing…" : "Generate briefing"}
           </Button>
           {error && <p className="text-[15px] text-destructive">{error}</p>}
         </div>
@@ -173,7 +173,7 @@ export function KeyFindings({ memo, loading, error, onRetry, onSection }: {
           <Button size="xs" variant="outline" onClick={onRetry}>Try again</Button>
         </div>
       ) : (
-        <div className="space-y-2 px-5 py-4" aria-busy="true" aria-label="Loading findings">
+        <div className="space-y-2 px-5 py-4" role="status"><span className="sr-only">Loading findings…</span>
           <Skeleton className="h-4 w-3/4 motion-reduce:animate-none" />
           <Skeleton className="h-4 w-2/3 motion-reduce:animate-none" />
           <Skeleton className="h-4 w-1/2 motion-reduce:animate-none" />

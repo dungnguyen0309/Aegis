@@ -125,7 +125,7 @@ export function CalculatorView({ reference, from }: { reference: Reference | nul
     <div className="space-y-4">
       <PageHeader title="Calculator"
         actions={<>
-          <Button variant="outline" size="sm" onClick={reset}><ArrowCounterClockwiseIcon /> {from ? "Reset to assessment" : "Reset"}</Button>
+          <Button variant="outline" size="sm" onClick={reset}><ArrowCounterClockwiseIcon /> {from ? "Reset to assessment" : "Reset to example"}</Button>
           <Button variant="outline" size="sm" onClick={download}><DownloadSimpleIcon /> Download CSV</Button>
         </>} />
 
@@ -212,7 +212,7 @@ export function CalculatorView({ reference, from }: { reference: Reference | nul
           {error && <p className="border border-destructive/40 bg-destructive/10 px-4 py-2 text-sm">{error}</p>}
           {!r || !result ? (
             <div className="grid h-64 place-items-center border border-border bg-card text-sm text-muted-foreground">
-              {hsValid ? "Calculating…" : "Enter a six-digit HS code."}
+              {!hsValid ? "Enter a six-digit HS code." : error && !busy ? "No result. Change an input to try again." : "Calculating…"}
             </div>
           ) : (
             <>

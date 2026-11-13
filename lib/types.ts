@@ -2,7 +2,7 @@ export type Band = "LOW" | "MODERATE" | "HIGH" | "CRITICAL";
 export type Unit = "EUR" | "USD";
 export type Weights = Record<string, number>;
 export type EntityStatus = "CLEAN" | "PARTIAL" | "MATCH";
-/** "NAME ONLY" comes from batch screening only: the route was not checked, so a clean name is not a clean result. */
+/** "NAME ONLY": the route was not checked (a batch row without one, or no trade data at all), so a clean name is not a clean result. */
 export type VerdictCode = "STOP" | "HOLD" | "RED FLAG" | "ELEVATED" | "NAME ONLY" | "STANDARD";
 
 export interface Reference {
@@ -120,6 +120,7 @@ export interface Route {
   note: string | null;
   /** True when there is no usable pre-war series and no new flow: the score lacks its statistical parts. */
   no_baseline: boolean;
+  no_data: boolean;
   threshold: number;
 }
 

@@ -251,7 +251,7 @@ export function CorridorMap({ exporter, exporterName, intermediary, intermediary
               <g key={code} className="cursor-pointer" onClick={() => onSelect(code)} role="button" tabIndex={0}
                 onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelect(code); } }}
                 aria-label={`Assess ${regionName(code)}`}>
-                <title>{regionName(code)}</title>
+                <title>{`Assess ${regionName(code)}`}</title>
                 <rect x={x - 1.5} y={y - 1.5} width={w + 3} height={h + 3} rx={2} fill="#fff"
                   stroke={isActive ? "var(--foreground)" : "var(--chart-axis)"} strokeWidth={isActive ? 1.4 : 0.8} />
                 <image href={`/flags/${code.toLowerCase()}.svg`} x={x} y={y} width={w} height={h} preserveAspectRatio="none" />

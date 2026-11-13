@@ -290,7 +290,7 @@ const Heatmap = memo(function Heatmap({ rows, partners, on, onHover, onAssess, o
                   <ProductArt hs={r.hs} size={24} />
                   <div className="min-w-0">
                     <div className="font-bold tabular">{r.hs} <span className="font-normal text-faint">Tier {r.tier}</span></div>
-                    <div className="max-w-[180px] truncate text-muted-foreground">{r.description}</div>
+                    <div className="max-w-[180px] truncate text-muted-foreground" title={r.description}>{r.description}</div>
                   </div>
                 </div>
               </th>
@@ -306,7 +306,7 @@ const Heatmap = memo(function Heatmap({ rows, partners, on, onHover, onAssess, o
                       onFocus={() => { setCur(`${i}-${j}`); onHover(corridor); intent.start(() => onPrefetch(r.hs, c.partner)); }}
                       onBlur={intent.stop}
                       onClick={() => { intent.stop(); onAssess(r.hs, c.partner); }}
-                      aria-label={`HS ${r.hs} to ${c.partner}: route risk ${c.score} ${c.band}${match ? "" : ", outside the filters"}`}
+                      aria-label={`Assess HS ${r.hs} to ${regionName(c.partner)}: route risk ${c.score} ${word(c.band)}${match ? "" : ", outside the filters"}`}
                       className="block h-7 w-full min-w-[40px] text-center font-bold tabular outline-none ring-inset transition-shadow hover:ring-2 hover:ring-foreground focus-visible:ring-2 focus-visible:ring-ring">
                       {c.score}
                     </button>
@@ -461,7 +461,7 @@ export function RadarView({ onAssess, onPrefetch, tiers }: {
       {error && <p className="text-sm text-destructive">{error}</p>}
       {!ready || !matrix ? (
         <div className="grid h-64 place-items-center border border-border bg-card text-sm text-muted-foreground">
-          <span className="flex items-center gap-2"><SpinnerGapIcon className="size-4 animate-spin" /> Scoring routes…</span>
+          {error && !offline ? "Routes not loaded. Reload the page to try again." : <span className="flex items-center gap-2" role="status"><SpinnerGapIcon className="size-4 animate-spin motion-reduce:animate-none" aria-hidden /> {offline ? "Reconnecting…" : "Scoring routes…"}</span>}
         </div>
       ) : (
         <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
@@ -531,11 +531,11 @@ export function RadarView({ onAssess, onPrefetch, tiers }: {
                           </div>
                           <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[15px] tabular">
                             <StatusBadge tone={bandTone[c.band]}>{c.score}</StatusBadge>
-                            <span>{c.multiplier !== null ? `Exports vs pre-war: ${times(c.multiplier)}` : c.emergent ? "New flow" : ""}</span>
+                            <span>{c.multiplier !== null ? `Exports vs pre-war: ${times(c.multiplier)}` : c.emergent ? "Exports vs pre-war: New flow" : "No baseline"}</span>
                             {c.ytd !== null && ready.latest_month && <span className="text-muted-foreground">{ready.latest_month.slice(0, 4)} so far vs 2021: {times(c.ytd)}</span>}
                           </div>
                           {Math.max(c.multiplier ?? 0, c.ytd ?? 0) >= 20 && (
-                            <div className="mt-0.5 text-[15px] text-muted-foreground">Small pre-war base: the multiple overstates the volume.</div>
+                            <div className="mt-0.5 text-[15px] text-muted-foreground" title="On a small pre-war base, these ratios overstate the change">Small pre-war base</div>
                           )}
                         </div>
                       </button>

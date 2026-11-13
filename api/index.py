@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field, field_validator
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from _lib import anomaly, config, hs_codes, jurisdiction, memo, mirror, radar, registry, sanctions, trade  # noqa: E402
+from _lib.names import normalize  # noqa: E402
 
 app = FastAPI(
     title="Aegis API",
@@ -30,7 +31,7 @@ app = FastAPI(
 def _valid_hs(v: str) -> str:
     code = hs_codes.clean_hs(v)
     if not hs_codes.HS_PATTERN.match(code):
-        raise ValueError("HS code must have 6 digits")
+        raise ValueError("Enter a six-digit HS code.")
     if not hs_codes.real_chapter(code):
         raise ValueError("Not a valid HS code: chapters run from 01 to 97")
     return code
@@ -39,7 +40,17 @@ def _valid_hs(v: str) -> str:
 def _valid_intermediary(v: str) -> str:
     v = v.upper()
     if v not in config.INTERMEDIARIES:
-        raise ValueError("Unsupported transit country")
+        raise ValueError("Transit country not covered. Choose one from the list.")
+    return v
+
+
+def _screenable(v: str) -> str:
+    """The lists are matched in Latin script: a name with no Latin letters or digits cannot be screened."""
+    v = v.strip()
+    if len(v) < 2:
+        raise ValueError("Enter a name of at least two characters.")
+    if not normalize(v):
+        raise ValueError(f"'{v[:40]}' has no Latin letters. Enter the name in Latin script to screen it.")
     return v
 
 
@@ -47,7 +58,7 @@ def _valid_weights(v: dict[str, float] | None) -> dict[str, float] | None:
     if v is None:
         return None
     if set(v) - set(anomaly.WEIGHTS) or any(x < 0 or x > 100 for x in v.values()):
-        raise ValueError("Weights must be known components between 0 and 100")
+        raise ValueError("Route risk weights must be parts of the score, each from 0 to 100. Reset the weights and try again.")
     return v
 
 
@@ -64,12 +75,12 @@ class AssessRequest(BaseModel):
     @field_validator("company")
     @classmethod
     def _strip(cls, v: str) -> str:
-        return v.strip()
+        return _screenable(v)
 
     @field_validator("ubos")
     @classmethod
     def _ubos(cls, v: list[str]) -> list[str]:
-        return [u.strip()[:120] for u in v if u and u.strip()]
+        return [_screenable(u[:120]) for u in v if u and u.strip()]
 
     @field_validator("hs")
     @classmethod
@@ -85,7 +96,7 @@ class AssessRequest(BaseModel):
     @classmethod
     def _exporter(cls, v: str) -> str:
         if v not in config.EXPORTERS:
-            raise ValueError("Unsupported exporter")
+            raise ValueError("Exporter not covered. Choose one from the list.")
         return v
 
     @field_validator("intermediary")
@@ -129,12 +140,12 @@ class CalculateRequest(BaseModel):
     @classmethod
     def _amounts(cls, v: list[float]) -> list[float]:
         if any(not math.isfinite(x) or x < 0 or x > 1e12 for x in v):
-            raise ValueError("Export values must be between 0 and 1 trillion")
+            raise ValueError("Enter export values between 0 and 1 trillion.")
         return v
 
     def model_post_init(self, _context) -> None:
         if not (len(self.years) == len(self.values) == len(self.russia)):
-            raise ValueError("years, values and russia must have the same length")
+            raise ValueError("Enter both export values for every year.")
 
 
 async def _assess(req: AssessRequest) -> dict:
@@ -227,7 +238,7 @@ def reference() -> dict:
 def hs_lookup(code: str) -> dict:
     hs = hs_codes.clean_hs(code)
     if not hs_codes.HS_PATTERN.match(hs):
-        raise HTTPException(422, "HS code must have 6 digits")
+        raise HTTPException(422, "Enter a six-digit HS code.")
     return hs_codes.classify(hs)
 
 
@@ -262,6 +273,11 @@ class BatchRow(BaseModel):
     hs: str | None = None
     intermediary: str | None = None
 
+    @field_validator("company")
+    @classmethod
+    def _company(cls, v: str) -> str:
+        return _screenable(v)
+
 
 class BatchRequest(BaseModel):
     rows: list[BatchRow] = Field(min_length=1, max_length=200)
@@ -288,7 +304,7 @@ async def batch(req: BatchRequest) -> dict:
         raw_cc = (row.country or "").strip().upper()
         cc = raw_cc if raw_cc in config.ISO2 else None
         if raw_cc and not cc:
-            issues.append(f"Unknown country code '{row.country.strip()[:12]}', ignored.")
+            issues.append(f"Unknown country code '{row.country.strip()[:12]}'; name screened without a country.")
         entity = await sanctions.screen(row.company.strip(), cc, [], live=False)
         top = entity["subjects"][0]["matches"][:1]
         result = {

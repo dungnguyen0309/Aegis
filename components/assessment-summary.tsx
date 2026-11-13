@@ -52,14 +52,14 @@ function CopyLink() {
   return (
     <Button variant="ghost" size="sm" onClick={copy} aria-live="polite">
       {state === "copied" ? <CheckIcon /> : <LinkSimpleIcon />}
-      {state === "copied" ? "Link copied" : state === "failed" ? "Copy the address bar" : "Copy link"}
+      {state === "copied" ? "Link copied" : state === "failed" ? "Copy failed: use the address bar" : "Copy link"}
     </Button>
   );
 }
 
 /** The recommended action as the headline, who and what was assessed, and the four figures behind it. */
-export function AssessmentSummary({ a, onSection, listsDate, example }: {
-  a: Assessment; onSection: (s: Section) => void; listsDate?: string; example?: boolean;
+export function AssessmentSummary({ a, onSection, example }: {
+  a: Assessment; onSection: (s: Section) => void; example?: boolean;
 }) {
   const { query: q, classification: c, route: r, entity: e } = a;
   const tone = verdictTone[a.verdict.code];
@@ -125,7 +125,6 @@ export function AssessmentSummary({ a, onSection, listsDate, example }: {
           </ul>
         )}
         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[15px] text-muted-foreground">
-          {listsDate && <span>Sanctions lists checked {listsDate}</span>}
           <button type="button" onClick={() => onSection("briefing")}
             className="font-semibold text-foreground underline decoration-border underline-offset-4 hover:decoration-foreground">
             Open briefing
@@ -138,11 +137,11 @@ export function AssessmentSummary({ a, onSection, listsDate, example }: {
           value={<StatusBadge tone={entityTone[e.status]}>{entityLabel[e.status]}</StatusBadge>}
           sub={best && e.status !== "CLEAN"
             ? `${best.name} · ${best.lists.join(", ")} · ${best.score.toFixed(0)}%`
-            : `${e.subjects.length} name${e.subjects.length > 1 ? "s" : ""} · EU, US and UN lists`} />
+            : `${e.subjects.length} name${e.subjects.length > 1 ? "s" : ""} checked`} />
         <Kpi label="Route risk" onClick={() => onSection("route")}
           value={<><span className="text-xl font-bold leading-none tabular">{r.score}</span><span className="text-muted-foreground">/ 100</span>
             <StatusBadge tone={rs.tone}>{rs.label}</StatusBadge></>}
-          sub={`${q.exporter_name} → ${q.intermediary_name}`} />
+          sub={undefined} />
         <Kpi label="Item" onClick={() => onSection("goods")}
           value={<StatusBadge tone={itemTone(a)}>{c.chpl ? `Tier ${c.tier}` : c.status === "NOT LISTED" ? "Not on item list" : "Check parameters"}</StatusBadge>}
           sub={c.chpl ? "EU battlefield item list" : undefined} />

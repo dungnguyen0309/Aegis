@@ -78,7 +78,7 @@ export function Dashboard() {
     } catch (e) {
       if (id !== seq.current) return;
       if (e instanceof ApiUnavailable) setOffline(true);
-      setMemoError(e instanceof Error ? e.message : "Request failed");
+      setMemoError(e instanceof Error ? e.message : "The briefing could not be drafted.");
     } finally {
       if (id === seq.current) setMemoLoading(false);
     }
@@ -100,7 +100,7 @@ export function Dashboard() {
     } catch (e) {
       if (id !== seq.current) return;
       if (e instanceof ApiUnavailable) setOffline(true);
-      else setError(e instanceof Error ? e.message : "Request failed");
+      else setError(e instanceof Error ? e.message : "The assessment could not be run.");
     } finally {
       if (id === seq.current) setLoading(false);
     }
@@ -259,7 +259,7 @@ export function Dashboard() {
           <div id="content" tabIndex={-1} className={cn("order-1 min-w-0 space-y-4 outline-none transition-opacity lg:order-none", loading && a && "opacity-60")}>
             {offline ? (
               <div className="flex items-center gap-2 border border-[color-mix(in_srgb,var(--status-warning)_55%,transparent)] bg-[color-mix(in_srgb,var(--status-warning)_12%,transparent)] px-4 py-2 text-sm">
-                <SpinnerGapIcon className="size-4 shrink-0 animate-spin text-warning-ink" /> {new ApiUnavailable().message}
+                <SpinnerGapIcon className="size-4 shrink-0 animate-spin text-warning-ink motion-reduce:animate-none" aria-hidden /> <span role="status">{/* The page retries on its own, so drop the message's "try again" advice */}{new ApiUnavailable().message.replace(/,? then try again\.| Try again in a moment\./, ".")} Reconnecting…</span>
               </div>
             ) : error && (
               <div className="flex flex-wrap items-center gap-2 border border-destructive/40 bg-destructive/10 px-4 py-2 text-sm" role="alert">
@@ -278,9 +278,9 @@ export function Dashboard() {
 
             {!a ? (
               loading && !offline ? (
-                <div className="space-y-4" aria-busy="true">
+                <div className="space-y-4">
                   <p className="flex items-center gap-2 text-sm text-muted-foreground" role="status">
-                    <SpinnerGapIcon className="size-4 animate-spin motion-reduce:animate-none" aria-hidden /> Running…
+                    <SpinnerGapIcon className="size-4 animate-spin motion-reduce:animate-none" aria-hidden /> Running assessment…
                   </p>
                   <Skeleton className="h-[236px] border border-border motion-reduce:animate-none" />
                   <Skeleton className="h-10 motion-reduce:animate-none" />
@@ -288,12 +288,12 @@ export function Dashboard() {
                 </div>
               ) : (
                 <div className="grid h-96 place-items-center border border-border bg-card text-sm text-muted-foreground">
-                  {offline ? "Waiting for the analysis service…" : "No assessment yet."}
+                  {offline ? "Waiting for the analysis service…" : "No assessment yet. Fill in the form and choose Run assessment."}
                 </div>
               )
             ) : (
               <>
-                <AssessmentSummary a={a} onSection={setSection} listsDate={reference?.sanctions.retrieved}
+                <AssessmentSummary a={a} onSection={setSection}
                   example={PRESETS.some((p) => p.form.company === a.query.company && p.form.hs === a.query.hs
                     && p.form.intermediary === a.query.intermediary && p.form.exporter === a.query.exporter
                     && p.form.jurisdiction === (a.query.jurisdiction ?? "") && a.query.ubos.length === 0)} />
@@ -312,7 +312,7 @@ export function Dashboard() {
                       <CorridorPanel view={mapView} exporter={a.query.exporter} exporterName={exporterName} flows={a.flows}
                         intermediary={a.query.intermediary} intermediaryName={partner} onSelect={(code) => rerun({ intermediary: code })} />
                     </Panel>
-                    <Panel title="Shipment" subtitle="Illustration, not an observed shipment"
+                    <Panel title="Shipment illustration"
                       bodyClassName="px-2 pb-4 pt-3 sm:px-4" tour="scene"
                       action={<Segmented value={sceneView} onChange={setSceneView} options={[
                         { value: "3d", label: "3D", icon: <CubeIcon className="size-4" /> },

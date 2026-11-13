@@ -267,9 +267,9 @@ export function Skyline3D({ data, rows, byTier, on, onHover, onAssess }: {
   return (
     <Frame3D hostRef={hostRef} stageRef={stageRef} failed={failed} tip={tip} className="h-[280px] bg-card sm:h-[460px]"
       label={`3D skyline of route risk for ${rows.length} items × ${m} transit countries, exporter ${data.exporter_name}`}
-      hint="Drag to rotate · click a bar to assess · Ctrl + scroll to zoom"
+      hint="Drag to rotate · click a bar to assess"
       tools={<>
-        <ToolButton label="Perspective view" active={!top} onClick={() => view(false)}><ArrowsOutIcon className="size-3.5" /> 3D</ToolButton>
+        <ToolButton label="3D view" active={!top} onClick={() => view(false)}><ArrowsOutIcon className="size-3.5" /> 3D</ToolButton>
         <ToolButton label="Top view" active={top} onClick={() => view(true)}><EyeIcon className="size-3.5" /> Top</ToolButton>
       </>} />
   );

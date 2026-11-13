@@ -94,7 +94,7 @@ export function AnomalyChart({ route, partner, unit }: { route: Route; partner: 
                 return (
                   <Tip>
                     <div className="mb-1 font-bold text-foreground">{p.year} · exports to {partner}</div>
-                    <Row k="Value" v={money(p.value, unit, 2)} />
+                    <Row k="Exports" v={money(p.value, unit, 2)} />
                     <Row k="YoY" v={pct(p.yoy)} />
                     <Row k="Z-score" v={zfmt(p.z)} />
                     {p.flagged && (

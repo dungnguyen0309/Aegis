@@ -68,7 +68,7 @@ async def lookup(name: str, country: str | None) -> dict:
                     records[0]["ultimate_parent"] = await _parent(client, records[0]["lei"])
         except (httpx.HTTPError, KeyError, ValueError):
             return {"available": False, "results": [], "flags": [],
-                    "note": "The GLEIF register could not be reached; try again later."}
+                    "note": "The LEI register (GLEIF) could not be reached. Try again later."}
         hit = {"results": records, "retrieved": dt.date.today().isoformat()}
         await cache.set(key, hit, ttl=86400)
 

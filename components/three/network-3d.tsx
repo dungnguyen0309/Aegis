@@ -37,7 +37,7 @@ function graph(e: Entity, company: string, jurisdiction: string | null) {
     const id = `s:${i}`;
     const isCompany = s.role === "Company";
     add({ id, kind: isCompany ? "company" : "person", label: s.name, size: isCompany ? 0.56 : 0.42, pinned: isCompany, flagged: s.status !== "CLEAN",
-      info: <><div className="text-[14px] text-faint">{s.role}</div><div className="font-bold">{s.name}</div>
+      info: <><div className="text-[14px] text-faint">{isCompany ? "Buyer" : "Owner or director"}</div><div className="font-bold">{s.name}</div>
         <div className="mt-1"><StatusBadge tone={entityTone[s.status]}>{entityLabel[s.status]}{s.status !== "CLEAN" && ` · ${s.best_score.toFixed(0)}%`}</StatusBadge></div></> });
     if (!isCompany) edges.push({ a: "s:0", b: id, kind: "owner" });
     HUBS.forEach((h) => edges.push({ a: id, b: `hub:${h.id}`, kind: "screened" }));

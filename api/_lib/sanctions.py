@@ -76,18 +76,21 @@ def _local_match(name: str, kind: str, jurisdiction: str | None) -> list[dict]:
     query = normalize(name)
     if not query:
         return []
-    names, refs = pools[kind]
-    candidates = {
-        i for scorer in (fuzz.token_set_ratio, fuzz.ratio)
-        for _, _, i in process.extract(query, names, scorer=scorer, processor=None,
-                                       limit=40, score_cutoff=60)
-    }
     best: dict[int, tuple[float, str]] = {}
-    for i in candidates:
-        score = _similarity(query, names[i], kind)
-        ent = refs[i]
-        if score >= PARTIAL_AT - 10 and score > best.get(ent, (0, ""))[0]:
-            best[ent] = (score, names[i])
+    # An owner can be a company, so owners are also checked against listed organisations,
+    # still under the stricter person rules ("Petrov" alone does not match "Petrov Trading").
+    for pool in ("P", "O") if kind == "P" else ("O",):
+        names, refs = pools[pool]
+        candidates = {
+            i for scorer in (fuzz.token_set_ratio, fuzz.ratio)
+            for _, _, i in process.extract(query, names, scorer=scorer, processor=None,
+                                           limit=40, score_cutoff=60)
+        }
+        for i in candidates:
+            score = _similarity(query, names[i], kind)
+            ent = refs[i]
+            if score >= PARTIAL_AT - 10 and score > best.get(ent, (0, ""))[0]:
+                best[ent] = (score, names[i])
 
     out = []
     for ent_idx, (score, matched) in sorted(best.items(), key=lambda kv: -kv[1][0])[:8]:
@@ -106,7 +109,8 @@ async def _api_match(name: str, kind: str, jurisdiction: str | None) -> list[dic
     props: dict[str, list[str]] = {"name": [name]}
     if jurisdiction:
         props["country"] = [jurisdiction.lower()]
-    body = {"queries": {"q": {"schema": "Person" if kind == "P" else "Company", "properties": props}}}
+    # Owners can be people or companies: LegalEntity matches both
+    body = {"queries": {"q": {"schema": "LegalEntity" if kind == "P" else "Company", "properties": props}}}
     async with httpx.AsyncClient(timeout=config.HTTP_TIMEOUT) as client:
         resp = await client.post(API_URL, json=body,
                                  headers={"Authorization": f"ApiKey {config.OPENSANCTIONS_API_KEY}"})
@@ -154,7 +158,7 @@ async def screen(company: str, jurisdiction: str | None, ubos: list[str], live: 
     for name, kind, role in subjects:
         matches = None
         if use_api:
-            key = f"os:{kind}:{jurisdiction}:{normalize(name)}"
+            key = f"os2:{kind}:{jurisdiction}:{normalize(name)}"  # os2: owners now match companies too
             matches = await cache.get(key)
             if matches is None:
                 try:

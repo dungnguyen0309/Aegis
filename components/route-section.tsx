@@ -38,9 +38,9 @@ export function RouteSection({ a, reference, onWeights, onCalculator }: {
     <>
       <Panel title="Annual exports" tour="exports"
         subtitle={`${a.series.unit} · ${a.series.source} ${MODE_LABEL[a.series.mode] ?? a.series.mode}`}>
-        {a.series.warning && <p className="mb-3 text-[15px] text-warning-ink">{a.series.warning}</p>}
+        {a.series.warning && a.route.points.length > 0 && <p className="mb-3 text-[15px] text-warning-ink">{a.series.warning}</p>}
         {a.route.points.length === 0 ? (
-          <p className="py-10 text-center text-sm text-muted-foreground">No trade data for this combination.</p>
+          <p className="py-10 text-center text-sm text-muted-foreground">{a.series.warning ?? "No trade data for this item and route."}</p>
         ) : (
           <Tabs defaultValue="chart">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3">

@@ -152,7 +152,7 @@ export function BatchView({ state, onState, onAssess, onPrefetch }: {
     try {
       setResult(await api.batch(rows, "DE"), screened);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Screening failed");
+      setError(e instanceof Error ? e.message : "Batch screening failed. Try again.");
     } finally {
       setLoading(false);
     }
@@ -170,7 +170,7 @@ export function BatchView({ state, onState, onAssess, onPrefetch }: {
 
       <Panel title="Buyers">
         <textarea value={text} onChange={(e) => setText(e.target.value)} rows={8} spellCheck={false}
-          placeholder="company,country,hs,intermediary" aria-label="Buyers as CSV"
+          placeholder="Paste CSV rows: company,country,hs,intermediary" aria-label="Buyers as CSV"
           className="w-full resize-y border border-input bg-transparent px-3 py-2 text-[15px] tabular outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring" />
         {(short > 0 || extra > 0) && (
           <p className="mt-2 text-[15px] text-muted-foreground" role="status">
@@ -185,7 +185,7 @@ export function BatchView({ state, onState, onAssess, onPrefetch }: {
           <Button variant="outline" onClick={() => setText(SAMPLE)}><ListChecksIcon /> Load sample</Button>
           <Button onClick={run} disabled={loading || rows.length === 0}>
             {loading ? <SpinnerGapIcon className="animate-spin" /> : <ListChecksIcon />}
-            {loading ? "Screening…" : `Screen ${rows.length} row${rows.length === 1 ? "" : "s"}`}
+            {loading ? "Screening…" : rows.length ? `Screen ${rows.length} row${rows.length === 1 ? "" : "s"}` : "Screen buyers"}
           </Button>
           {error && <span className="text-[15px] text-destructive">{error}</span>}
         </div>

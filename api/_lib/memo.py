@@ -20,6 +20,7 @@ LEVELS = {
     "HOLD": {"level": 3, "title": "Possible sanctions match: hold for manual review"},
     "RED FLAG": {"level": 3, "title": "Enhanced due diligence mandatory"},
     "ELEVATED": {"level": 2, "title": "Enhanced due diligence recommended"},
+    "NAME ONLY": {"level": 2, "title": "Route not checked: only the name was screened"},
     "STANDARD": {"level": 1, "title": "Standard due diligence"},
 }
 # A sanctions match ends the transaction: these steps replace the due-diligence list
@@ -66,6 +67,8 @@ def decide(entity: dict, route: dict, classification: dict) -> dict:
         code = "STOP"
     elif entity["status"] == "PARTIAL":
         code = "HOLD"
+    elif route.get("no_data"):
+        code = "NAME ONLY"  # a clean name is not a clean shipment when the route was never checked
     elif route["band"] == "CRITICAL":
         code = "RED FLAG"
     elif route["band"] == "HIGH":
@@ -74,7 +77,9 @@ def decide(entity: dict, route: dict, classification: dict) -> dict:
         code = "STANDARD"
     if entity["status"] == "CLEAN" and route["band"] in ("CRITICAL", "HIGH"):
         notes.append("No sanctions match does not offset route risk: shell companies are often unlisted.")
-    if route.get("no_baseline"):
+    if route.get("no_data"):
+        notes.append("No trade data could be fetched for this item and route. Run the assessment again later.")
+    elif route.get("no_baseline"):
         notes.append("No pre-war trade to compare with: the statistical parts of route risk are missing.")
     if classification["chpl"]:
         notes.append("Art. 12g No-Russia clause is mandatory for this item at any risk level.")

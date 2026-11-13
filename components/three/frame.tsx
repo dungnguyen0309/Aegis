@@ -137,7 +137,7 @@ export function Frame3D({ hostRef, stageRef, label, className, tip, failed, tool
       {overlay}
       {failed ? (
         <div className="absolute inset-0 grid place-items-center p-6 text-center text-sm text-muted-foreground">
-          WebGL is off or unavailable in this browser.
+          This 3D view needs WebGL, which is off or unavailable in this browser. Turn on hardware acceleration in the browser settings and reload.
         </div>
       ) : (
         <>
@@ -149,9 +149,9 @@ export function Frame3D({ hostRef, stageRef, label, className, tip, failed, tool
             <ToolButton label="Reset view" onClick={() => stageRef.current?.home()}><ArrowCounterClockwiseIcon className="size-3.5" /></ToolButton>
           </div>
           <div className="pointer-events-none absolute bottom-2 left-3 z-10 text-[14px] text-faint">
-            <span className="[@media(hover:none)]:hidden">{hint ?? "Drag to rotate · Ctrl + scroll or pinch to zoom"}</span>
-            {/* Touch screens have no hover or Ctrl: keep the drag part and name the pinch */}
-            <span className="hidden [@media(hover:none)]:inline">{(hint ?? "Drag to rotate").split(" · ")[0]} · pinch to zoom</span>
+            {/* Zoom has its own buttons; touch screens keep only the drag part, since "click" does not apply */}
+            <span className="[@media(hover:none)]:hidden">{hint ?? "Drag to rotate"}</span>
+            <span className="hidden [@media(hover:none)]:inline">{(hint ?? "Drag to rotate").split(" · ")[0]}</span>
           </div>
         </>
       )}

@@ -94,7 +94,7 @@ export function QueryPanel({ reference, form, setForm, onRun, onPrefetch, loadin
   const realChapter = sixDigits && Number(form.hs.slice(0, 2)) >= 1 && Number(form.hs.slice(0, 2)) <= 97 && !form.hs.startsWith("77");
   const hsValid = sixDigits && realChapter;
   const blocked = form.company.trim().length < 2 ? "Enter a name of at least 2 characters."
-    : !hsValid ? "Enter a six-digit HS code." : null;
+    : !sixDigits ? "Enter a six-digit HS code." : !hsValid ? "Enter a valid HS code." : null;
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (form.company.trim().length >= 2 && hsValid) onRun(form);
@@ -141,7 +141,7 @@ export function QueryPanel({ reference, form, setForm, onRun, onPrefetch, loadin
             </SelectContent>
           </Select>
         </Field>
-        <Field label="Owners and directors" htmlFor="ubos" hint="One name per line.">
+        <Field label="Owners and directors" htmlFor="ubos" hint="One name per line">
           <textarea id="ubos" rows={2} value={form.ubos} onChange={(e) => set({ ubos: e.target.value })}
             className="w-full resize-y border border-input bg-transparent px-2.5 py-1.5 text-xs outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring"
             placeholder="Optional" />
@@ -150,7 +150,7 @@ export function QueryPanel({ reference, form, setForm, onRun, onPrefetch, loadin
         <h3 className="border-t border-border pt-4 text-[17px] font-bold">Shipment</h3>
         <Field label="HS code" htmlFor="hs"
           hint={hsInfo ? <>Tier {hsInfo.tier} · {hsInfo.description}</> : !sixDigits ? "Six digits"
-            : !realChapter ? <span className="text-destructive">Not a valid HS code: chapters run 01–97</span>
+            : !realChapter ? <span className="text-destructive">Not a valid HS code. The first two digits must be 01–97, not 77.</span>
             : "Not on item list"}>
           <Input id="hs" list="hs-list" inputMode="numeric" value={form.hs} maxLength={6}
             onChange={(e) => set({ hs: e.target.value.replace(/\D/g, "").slice(0, 6) })} aria-invalid={!hsValid} />
@@ -200,7 +200,7 @@ export function QueryPanel({ reference, form, setForm, onRun, onPrefetch, loadin
           <Button type="submit" className="w-full" size="lg" variant={upToDate && !loading ? "outline" : "default"} disabled={loading || blocked !== null}
             aria-describedby={blocked ? "run-blocked" : undefined}>
             {loading ? <SpinnerGapIcon className="animate-spin" /> : <CrosshairIcon />}
-            {loading ? "Running…" : upToDate ? "Run again" : "Run assessment"}
+            {loading ? "Running assessment…" : upToDate ? "Run again" : "Run assessment"}
           </Button>
           {blocked && !loading && <p id="run-blocked" className="text-[14px] text-muted-foreground">{blocked}</p>}
         </div>

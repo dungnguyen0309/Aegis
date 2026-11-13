@@ -130,7 +130,9 @@ def analyse(series: dict, classification: dict, partner: str,
     equal = _weighted(parts, {k: 100 / len(WEIGHTS) for k in WEIGHTS})
     default = _weighted(parts, WEIGHTS)
 
-    if reclassified:
+    if not years:
+        note = "No trade data for this item and route: route risk covers only the item and the transit country."
+    elif reclassified:
         note = "HS 2022 subheading with no pre-war equivalent: statistical parts left out."
     elif emergent:
         note = "No exports pre-war (2017–21): any flow since 2022 is new."
@@ -163,6 +165,8 @@ def analyse(series: dict, classification: dict, partner: str,
         "note": note,
         # No usable pre-war series and no new flow either: the statistical components are missing, not low
         "no_baseline": not has_baseline and not emergent,
+        # No series at all (the snapshot has none and live data failed): the route was not checked
+        "no_data": not years,
         "threshold": config.Z_THRESHOLD,
     }
 

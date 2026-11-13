@@ -281,3 +281,38 @@ def test_calculator_matches_engine_and_validates():
     assert flat["route"]["band"] in ("LOW", "MODERATE") and flat["route"]["multiplier"] == 1
     assert client.post("/api/calculate", json={**body, "values": [1.0, 2.0]}).status_code == 422
     assert client.post("/api/calculate", json={**body, "values": [-1.0] * 9}).status_code == 422
+
+
+@pytest.mark.parametrize("name", ["华为技术有限公司", "شركة النور", "!!!", "  a"])
+def test_names_that_cannot_be_screened_are_rejected(name):
+    # a name with no Latin letters normalises to nothing and would screen as a clean "No match"
+    r = client.post("/api/assess", json={**BASE, "company": name, "hs": "854231", "intermediary": "KG"})
+    assert r.status_code == 422, name
+    r = client.post("/api/assess", json={**BASE, "company": "Acme GmbH", "ubos": [name], "hs": "854231", "intermediary": "KG"})
+    assert r.status_code == 422, name
+    assert client.post("/api/batch", json={"rows": [{"company": name}]}).status_code == 422
+
+
+def test_listed_company_as_owner_is_matched():
+    a = assess(company="Acme Trading GmbH", ubos=["Sberbank"], hs="854231", intermediary="KG")
+    owner = next(s for s in a["entity"]["subjects"] if s["name"] == "Sberbank")
+    assert owner["status"] == "MATCH" and a["verdict"]["code"] == "STOP"
+
+
+def test_route_without_any_trade_data_is_not_standard(monkeypatch):
+    from _lib import trade
+
+    async def unavailable(*_args):
+        return {"years": [], "values": [], "russia": [], "unit": "EUR", "mode": "unavailable",
+                "source": "Eurostat / UN Comtrade", "retrieved": None, "warning": "No trade data."}
+
+    async def no_monthly(*_args):
+        return None
+
+    monkeypatch.setattr(trade, "get_series", unavailable)
+    monkeypatch.setattr(trade, "get_monthly", no_monthly)
+    a = assess(company="Plain Trading Co", hs="950300", intermediary="KZ")
+    assert a["route"]["no_data"] and a["verdict"]["code"] == "NAME ONLY"
+    assert not any("No pre-war trade" in n for n in a["verdict"]["notes"])
+    m = client.post("/api/memo", json={**BASE, "company": "Plain Trading Co", "hs": "950300", "intermediary": "KZ"})
+    assert m.status_code == 200 and m.json()["verdict"]["code"] == "NAME ONLY"

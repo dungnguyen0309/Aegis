@@ -65,7 +65,7 @@ export function AppHeader({ reference, view, onView, onTour }: {
           <Button variant="ghost" size="sm" onClick={onTour}><BinocularsIcon /> Tour</Button>
           <MethodologyDialog reference={reference} />
           <Button variant="ghost" size="icon-sm" onClick={() => setTheme(dark ? "light" : "dark")}
-            aria-label={dark ? "Switch to light theme" : "Switch to dark theme"} title={dark ? "Light theme" : "Dark theme"}>
+            aria-label={dark ? "Switch to light theme" : "Switch to dark theme"} title={dark ? "Switch to light theme" : "Switch to dark theme"}>
             {dark ? <SunIcon /> : <MoonIcon />}
           </Button>
         </div>

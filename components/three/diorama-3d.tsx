@@ -498,7 +498,7 @@ export function Diorama3D({ a }: { a: Assessment }) {
   return (
     <Frame3D hostRef={hostRef} stageRef={stageRef} failed={failed} tip={tip} className="h-[230px] bg-[var(--scene-sky-top)] sm:h-[330px]"
       label={`3D illustration: ${q.exporter_name} exports to ${q.company} in ${q.intermediary_name}, with a possible onward route to Russia`}
-      hint="Drag to rotate · hover for details"
+      hint="Drag to rotate"
       overlay={
         <div className="pointer-events-none absolute inset-0 overflow-hidden max-sm:hidden">
           {labels.map((l) => (

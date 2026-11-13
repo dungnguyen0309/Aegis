@@ -206,7 +206,7 @@ export function RiskCube3D({ rows, onAssess }: { rows: BatchRowOut[]; onAssess?:
   return (
     <Frame3D hostRef={hostRef} stageRef={stageRef} failed={failed} tip={tip} className="h-[360px] bg-card sm:h-[440px]"
       label={`3D scatter of ${rows.length} buyers by similarity, route risk and item tier`}
-      hint="Drag to rotate · click a point to assess · Ctrl + scroll to zoom"
+      hint="Drag to rotate · click a point to assess"
       overlay={labelled && (
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
           {rows.map((r, i) => (

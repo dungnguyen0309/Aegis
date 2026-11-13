@@ -20,16 +20,16 @@ export function RegistryLookup({ name, country }: { name: string; country: strin
     try {
       setState({ key, data: await api.company(name, country), loading: false, error: null });
     } catch (e) {
-      setState({ key, data: null, loading: false, error: e instanceof Error ? e.message : "Lookup failed" });
+      setState({ key, data: null, loading: false, error: e instanceof Error ? e.message : "LEI lookup failed. Try again." });
     }
   };
 
   return (
     <div className="mt-3 border-t border-border pt-3">
-      {!current.data && (
+      {(!current.data || !current.data.available) && (
         <Button size="sm" variant="outline" onClick={run} disabled={current.loading}>
           {current.loading ? <SpinnerGapIcon className="animate-spin" /> : <BuildingsIcon />}
-          {current.loading ? "Searching…" : "Look up LEI"}
+          {current.loading ? "Looking up LEI…" : "Look up LEI"}
         </Button>
       )}
       {current.error && <p className="mt-2 text-[14px] text-destructive">{current.error}</p>}

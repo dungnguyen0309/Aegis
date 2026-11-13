@@ -150,21 +150,20 @@ async def get_series(exporter: str, partner: str, hs: str, live: bool) -> dict:
     hit = await cache.get(key)
     if hit:
         return {**hit, "mode": "cached"}
-    errors = []
     for fetch in (_fetch_eurostat, _fetch_comtrade):
         try:
             series = await fetch(exporter, partner, hs)
             await cache.set(key, series)
             return {**series, "mode": "live"}
-        except (httpx.HTTPError, LookupError, ValueError, KeyError) as exc:
-            errors.append(type(exc).__name__)
+        except (httpx.HTTPError, LookupError, ValueError, KeyError):
+            continue
     if bundle:
         return {**bundle, "mode": "fallback",
-                "warning": f"Live sources failed ({', '.join(errors)}); showing snapshot data."}
+                "warning": "Live data could not be fetched; showing the snapshot."}
     return {
         "years": [], "values": [], "russia": [], "unit": "EUR", "mode": "unavailable",
         "source": "Eurostat / UN Comtrade", "retrieved": None,
-        "warning": "No snapshot data for this combination and the live sources failed. Try again later.",
+        "warning": "No trade data for this item and route: the snapshot has none and live data could not be fetched. Try again later.",
     }
 
 

@@ -42,7 +42,6 @@ export function LegalPanel({ c }: { c: Classification }) {
           </li>
         ))}
       </ul>
-      <p className="mt-3 text-[14px] text-faint">{c.source}</p>
     </Panel>
   );
 }

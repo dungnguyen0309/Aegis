@@ -336,7 +336,7 @@ export function Dashboard() {
                   <ViewBoundary label="Item" resetKey={a.generated_at}>
                     <div className="grid gap-4 lg:grid-cols-2">
                       <LegalPanel c={a.classification} />
-                      <Panel title="3D model" subtitle="Generic model, not to scale" tour="item3d">
+                      <Panel title="3D model" tour="item3d">
                         <Item3D hs={a.classification.hs} description={a.classification.description} />
                       </Panel>
                     </div>

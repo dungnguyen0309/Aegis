@@ -4,24 +4,26 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import * as THREE from "three";
 import { flagTexture, markTexture } from "@/components/three/marks";
 import { Frame3D, type Tip, tipAt, usePicking, useStage } from "@/components/three/frame";
+import { VIEW_H } from "@/components/three/lazy";
 import { regionName } from "@/components/visuals";
 import { money, entityLabel, routeStatus } from "@/lib/format";
+import { CONTAINER } from "@/lib/palette";
 import { MODE_LABEL, ROUTE_MODES, type Mode } from "@/lib/routes";
 import { useTheme } from "@/lib/theme";
 import { mergeStatic } from "@/lib/three-merge";
-import { cssVar, disposeTree, type Stage } from "@/lib/three-stage";
+import { cssVar, disposeTree, pageFont, type Stage } from "@/lib/three-stage";
 import type { Assessment } from "@/lib/types";
 
 const X = { exporter: -3.6, buyer: 0, russia: 3.6 };
 const HALF = 0.85; // half width of a plot
 const HOME = { pos: new THREE.Vector3(0.9, 2.75, 5.2), target: new THREE.Vector3(0, 0.45, 0.05) };
-const CONTAINER = ["#2a78d6", "#eb6834", "#0f766e", "#b45309", "#6250d6", "#475569"];
 
 type Pick = { title: ReactNode; lines: ReactNode[] };
 
 // Materials are shared within one build so that identical parts can be merged into one draw call.
 const MATERIALS = new Map<string, THREE.MeshStandardMaterial>();
 function std(color: string, rough = 0.6, metal = 0) {
+  if (color.startsWith("var(")) color = cssVar(color.slice(4, -1));
   const key = `${color}|${rough}|${metal}`;
   if (!MATERIALS.has(key)) MATERIALS.set(key, new THREE.MeshStandardMaterial({ color, roughness: rough, metalness: metal }));
   return MATERIALS.get(key)!;
@@ -48,13 +50,13 @@ function pick(o: THREE.Object3D, p: Pick) {
 function plot(x: number): THREE.Group {
   const g = new THREE.Group();
   g.position.x = x;
-  g.add(box(HALF * 2, 0.08, HALF * 2, std("#e3e8ee", 0.9)));
+  g.add(box(HALF * 2, 0.08, HALF * 2, std("var(--scene-wall-l)", 0.9)));
   return g;
 }
 
 /** Flag on a pole; returns the waving cloth so it can be animated. */
 function flagPole(g: THREE.Group, code: string, at: [number, number], invalidate: () => void, alive: () => boolean) {
-  g.add(cyl(0.012, 0.95, std("#6b7684", 0.4, 0.6), at[0], 0.08, at[1], 8));
+  g.add(cyl(0.012, 0.95, std("var(--scene-steel)", 0.4, 0.6), at[0], 0.08, at[1], 8));
   const cloth = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.255, 12, 1),
     new THREE.MeshStandardMaterial({ map: flagTexture(code, invalidate, alive), side: THREE.DoubleSide, roughness: 0.8 }));
   cloth.geometry.translate(0.17, 0, 0);
@@ -66,7 +68,7 @@ function flagPole(g: THREE.Group, code: string, at: [number, number], invalidate
 }
 
 function factory(g: THREE.Group, smoke: THREE.Mesh[]) {
-  const wall = std("#f2f4f7"), side = std("#d5dbe2"), glass = std("#9fc3ea", 0.25, 0.2), dark = std("#6b7684");
+  const wall = std("var(--scene-wall)"), side = std("var(--scene-wall-r)"), glass = std("var(--scene-glass)", 0.25, 0.2), dark = std("var(--scene-steel)");
   g.add(box(1.15, 0.42, 0.8, wall, -0.05, 0.08, 0.1));
   for (let i = 0; i < 4; i++) {
     const tooth = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.8, 3, 1), i % 2 ? side : glass);
@@ -78,18 +80,18 @@ function factory(g: THREE.Group, smoke: THREE.Mesh[]) {
   }
   for (let i = 0; i < 5; i++) g.add(box(0.12, 0.12, 0.01, glass, -0.5 + i * 0.22, 0.25, 0.505));
   g.add(box(0.26, 0.24, 0.01, dark, 0.38, 0.08, 0.505));
-  g.add(cyl(0.065, 1.05, std("#b9c1cb", 0.5), 0.52, 0.08, -0.45));
-  g.add(cyl(0.07, 0.05, std("#d03b3b", 0.5), 0.52, 1.0, -0.45));
+  g.add(cyl(0.065, 1.05, std("var(--scene-wall-r)", 0.5), 0.52, 0.08, -0.45));
+  g.add(cyl(0.07, 0.05, std("var(--series-2)", 0.5), 0.52, 1.0, -0.45));
   for (let i = 0; i < 4; i++) {
     const puff = new THREE.Mesh(new THREE.SphereGeometry(0.09, 12, 8),
-      new THREE.MeshStandardMaterial({ color: "#d6dce3", transparent: true, opacity: 0.7, roughness: 1 }));
+      new THREE.MeshStandardMaterial({ color: cssVar("--scene-smoke"), transparent: true, opacity: 0.7, roughness: 1 }));
     puff.position.set(0.52, 1.2 + i * 0.18, -0.45);
     puff.userData = { phase: i / 4, dynamic: true };
     smoke.push(puff);
     g.add(puff);
   }
   // pallets of crates by the loading door
-  for (let i = 0; i < 3; i++) g.add(box(0.14, 0.12, 0.14, std("#c99a5d", 0.9), 0.62, 0.08 + (i === 2 ? 0.12 : 0), 0.62 - (i % 2) * 0.17));
+  for (let i = 0; i < 3; i++) g.add(box(0.14, 0.12, 0.14, std("var(--scene-cargo)", 0.9), 0.62, 0.08 + (i === 2 ? 0.12 : 0), 0.62 - (i % 2) * 0.17));
 }
 
 function compound(g: THREE.Group, company: string, flagged: boolean, beacon: THREE.Mesh[]) {
@@ -100,30 +102,30 @@ function compound(g: THREE.Group, company: string, flagged: boolean, beacon: THR
     c.width = 128;
     c.height = 320;
     const ctx = c.getContext("2d")!;
-    ctx.fillStyle = "#dbe7f4";
+    ctx.fillStyle = cssVar("--scene-wall-l");
     ctx.fillRect(0, 0, 128, 320);
-    ctx.fillStyle = "#7aa1cc";
+    ctx.fillStyle = cssVar("--scene-glass");
     for (let r = 0; r < 12; r++) for (let k = 0; k < 4; k++) ctx.fillRect(10 + k * 29, 12 + r * 25, 20, 15);
     const t = new THREE.CanvasTexture(c);
     t.colorSpace = THREE.SRGBColorSpace;
     return t;
   })();
   const fm = new THREE.MeshStandardMaterial({ map: facade, roughness: 0.4 });
-  const roof = std("#c9d6e6");
+  const roof = std("var(--scene-wall-r)");
   const t = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.3, 0.5), [fm, fm, roof, roof, fm, fm]);
   t.position.set(-0.3, 0.08 + 0.65, -0.2);
   t.castShadow = t.receiveShadow = true;
   tower.add(t);
-  g.add(box(0.7, 0.32, 0.55, std("#eef1f4"), 0.35, 0.08, 0.3));
-  g.add(box(0.24, 0.2, 0.01, std("#8a95a3"), 0.35, 0.08, 0.576));
+  g.add(box(0.7, 0.32, 0.55, std("var(--scene-wall)"), 0.35, 0.08, 0.3));
+  g.add(box(0.24, 0.2, 0.01, std("var(--scene-steel)"), 0.35, 0.08, 0.576));
   // rooftop sign with the generated company mark
   const sign = new THREE.Sprite(new THREE.SpriteMaterial({ map: markTexture(company, flagged) }));
   sign.scale.set(0.42, 0.42, 1);
   sign.position.set(-0.3, 1.66, -0.2);
   g.add(sign);
-  g.add(cyl(0.01, 0.12, std("#6b7684"), -0.3, 1.38, -0.2, 6));
+  g.add(cyl(0.01, 0.12, std("var(--scene-steel)"), -0.3, 1.38, -0.2, 6));
   if (flagged) {
-    const light = new THREE.Mesh(new THREE.SphereGeometry(0.05, 16, 12), new THREE.MeshBasicMaterial({ color: "#ff4d4d", transparent: true }));
+    const light = new THREE.Mesh(new THREE.SphereGeometry(0.05, 16, 12), new THREE.MeshBasicMaterial({ color: cssVar("--status-critical"), transparent: true }));
     light.position.set(-0.05, 1.42, -0.2);
     light.userData.dynamic = true;
     beacon.push(light);
@@ -133,9 +135,9 @@ function compound(g: THREE.Group, company: string, flagged: boolean, beacon: THR
 }
 
 function depot(g: THREE.Group) {
-  g.add(box(1.1, 0.42, 0.85, std("#efe7e1"), 0, 0.08, 0.05));
-  g.add(box(1.18, 0.05, 0.93, std("#9b4a42", 0.7), 0, 0.5, 0.05));
-  [-0.3, 0.05, 0.4].forEach((x) => g.add(box(0.24, 0.27, 0.01, std("#8d7f75"), x, 0.08, 0.48)));
+  g.add(box(1.1, 0.42, 0.85, std("var(--scene-wall)"), 0, 0.08, 0.05));
+  g.add(box(1.18, 0.05, 0.93, std("var(--scene-roof)", 0.7), 0, 0.5, 0.05));
+  [-0.3, 0.05, 0.4].forEach((x) => g.add(box(0.24, 0.27, 0.01, std("var(--scene-warm)"), x, 0.08, 0.48)));
   for (let i = 0; i < 2; i++) g.add(box(0.36, 0.17, 0.17, std(CONTAINER[i + 2], 0.6), -0.45 + i * 0.42, 0.08, 0.68));
 }
 
@@ -144,10 +146,10 @@ function depot(g: THREE.Group) {
 function truck(color: string): THREE.Group {
   const g = new THREE.Group();
   g.add(box(0.46, 0.15, 0.15, std(color, 0.55), -0.08, 0.035, 0));
-  g.add(box(0.13, 0.13, 0.14, std("#2f3e4e", 0.5), 0.23, 0.035, 0));
-  g.add(box(0.01, 0.06, 0.12, std("#9cc3ec", 0.2), 0.296, 0.1, 0));
+  g.add(box(0.13, 0.13, 0.14, std("var(--scene-vehicle)", 0.5), 0.23, 0.035, 0));
+  g.add(box(0.01, 0.06, 0.12, std("var(--scene-glass)", 0.2), 0.296, 0.1, 0));
   for (const x of [-0.25, -0.13, 0.22]) for (const z of [-0.075, 0.075]) {
-    const w = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.03, 14), std("#1f2933", 0.8));
+    const w = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.03, 14), std("var(--scene-tyre)", 0.8));
     w.rotation.x = Math.PI / 2;
     w.position.set(x, 0.035, z);
     g.add(w);
@@ -167,12 +169,12 @@ function ship(n: number): THREE.Group {
   hull.closePath();
   const geo = new THREE.ExtrudeGeometry(hull, { depth: 0.28, bevelEnabled: false });
   geo.translate(0, -0.03, -0.14);
-  const h = new THREE.Mesh(geo, std("#1f3a5f", 0.5));
+  const h = new THREE.Mesh(geo, std("var(--scene-hull)", 0.5));
   h.castShadow = true;
   g.add(h);
-  g.add(box(1.16, 0.02, 0.285, std("#d03b3b", 0.6), 0.02, 0.07, 0));
-  g.add(box(0.16, 0.22, 0.24, std("#eef1f4", 0.5), -0.45, 0.11, 0));
-  g.add(box(0.17, 0.035, 0.25, std("#7aa1cc", 0.3), -0.45, 0.26, 0));
+  g.add(box(1.16, 0.02, 0.285, std("var(--series-2)", 0.6), 0.02, 0.07, 0));
+  g.add(box(0.16, 0.22, 0.24, std("var(--scene-wall)", 0.5), -0.45, 0.11, 0));
+  g.add(box(0.17, 0.035, 0.25, std("var(--scene-glass)", 0.3), -0.45, 0.26, 0));
   for (let i = 0; i < n; i++) {
     const col = i % 4, tier = Math.floor(i / 4);
     g.add(box(0.19, 0.09, 0.22, std(CONTAINER[i % CONTAINER.length], 0.55), -0.2 + col * 0.2, 0.11 + tier * 0.092, 0));
@@ -183,7 +185,7 @@ function ship(n: number): THREE.Group {
 
 function plane(): THREE.Group {
   const g = new THREE.Group();
-  const body = std("#eef1f4", 0.4), dark = std("#2f3e4e", 0.4);
+  const body = std("var(--scene-body)", 0.4), dark = std("var(--scene-vehicle)", 0.4);
   const f = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.6, 16), body);
   f.rotation.z = Math.PI / 2;
   g.add(f);
@@ -225,7 +227,7 @@ function legSurface(g: THREE.Group, x1: number, x2: number, mode: Mode, waves: T
     c.width = 256;
     c.height = 64;
     const ctx = c.getContext("2d")!;
-    ctx.fillStyle = "#8fbbe8";
+    ctx.fillStyle = cssVar("--scene-glass");
     ctx.fillRect(0, 0, 256, 64);
     ctx.strokeStyle = "rgba(255,255,255,0.55)";
     ctx.lineWidth = 3;
@@ -244,10 +246,10 @@ function legSurface(g: THREE.Group, x1: number, x2: number, mode: Mode, waves: T
     water.position.set(mid, 0.0, 0.1);
     water.receiveShadow = true;
     g.add(water);
-    for (const x of [x1 + 0.05, x2 - 0.05]) g.add(box(0.12, 0.05, 0.5, std("#a7b1bd", 0.8), x, 0.0, 0.25));
+    for (const x of [x1 + 0.05, x2 - 0.05]) g.add(box(0.12, 0.05, 0.5, std("var(--scene-wall-r)", 0.8), x, 0.0, 0.25));
   } else if (mode === "land") {
-    g.add(box(len, 0.02, 0.42, std("#5b6573", 0.85), mid, 0, 0.25));
-    for (let x = x1 + 0.1; x < x2 - 0.05; x += 0.22) g.add(box(0.1, 0.004, 0.018, std("#ffffff", 0.6), x + 0.05, 0.02, 0.25));
+    g.add(box(len, 0.02, 0.42, std("var(--scene-road)", 0.85), mid, 0, 0.25));
+    for (let x = x1 + 0.1; x < x2 - 0.05; x += 0.22) g.add(box(0.1, 0.004, 0.018, std("var(--scene-mark)", 0.6), x + 0.05, 0.02, 0.25));
   }
 }
 
@@ -279,12 +281,12 @@ function warningSprite(): THREE.Sprite {
   const c = document.createElement("canvas");
   c.width = c.height = 128;
   const ctx = c.getContext("2d")!;
-  ctx.fillStyle = "#d03b3b";
+  ctx.fillStyle = cssVar("--status-critical");
   ctx.beginPath();
   ctx.arc(64, 64, 58, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = "#ffffff";
-  ctx.font = "bold 84px sans-serif";
+  ctx.fillStyle = cssVar("--on-critical");
+  ctx.font = `700 84px ${pageFont()}`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillText("?", 64, 70);
@@ -298,7 +300,7 @@ function warningSprite(): THREE.Sprite {
 /* ---------------- component ---------------- */
 
 /** The shipment as a small 3D diorama: exporter factory → buyer → Russian depot. */
-export function Diorama3D({ a }: { a: Assessment }) {
+export function Diorama3D({ a, playing }: { a: Assessment; playing: boolean }) {
   const { hostRef, stageRef, ready, failed, reduce } = useStage({
     position: HOME.pos.toArray(), target: HOME.target.toArray(), minDistance: 2.5, maxDistance: 14, maxPolarAngle: 1.42, fov: 32,
   });
@@ -306,6 +308,7 @@ export function Diorama3D({ a }: { a: Assessment }) {
   const [tip, setTip] = useState<Tip | null>(null);
   const picks = useRef<THREE.Object3D[]>([]);
   const labelEls = useRef(new Map<string, HTMLDivElement>());
+  const tickRef = useRef<((t: number, dt: number) => void) | null>(null);
 
   const { query: q } = a;
   const { modes, alert } = derive(a);
@@ -389,7 +392,7 @@ export function Diorama3D({ a }: { a: Assessment }) {
       const g = new THREE.Group();
       legSurface(g, x1, x2, mode, waves);
       const curve = legCurve(x1, x2, mode);
-      if (mode === "air") dashes(g, curve, "#8f959e");
+      if (mode === "air") dashes(g, curve, cssVar("--chart-baseline"));
       if (suspicious) {
         dashes(g, mode === "air" ? curve : new THREE.LineCurve3(new THREE.Vector3(x1, 0.045, 0.62), new THREE.Vector3(x2, 0.045, 0.62)),
           cssVar("--status-critical"), mode === "air" ? 0.06 : 0);
@@ -442,12 +445,12 @@ export function Diorama3D({ a }: { a: Assessment }) {
     place(reduce ? 0 : 0.001);
     stage.renderer.shadowMap.needsUpdate = true;
     // Vehicle shadows follow at half the animation rate; the light and buildings never move
-    let frames = 0;
-    const tick = (t: number) => {
-      place(t);
+    let frames = 0, clock = 0.001; // own clock: a paused animation resumes where it stopped
+    const tick = (_t: number, dt: number) => {
+      place((clock += dt));
       if (++frames % 2 === 0) stage.renderer.shadowMap.needsUpdate = true;
     };
-    if (!reduce) stage.frame.add(tick);
+    tickRef.current = tick;
 
     const hide = stage.reveal(root);
     picks.current = [exp, buy, ru, ...movers.map((m) => m.obj), ...root.children.flatMap((c) => c.children.filter((o) => o instanceof THREE.Sprite))];
@@ -455,11 +458,19 @@ export function Diorama3D({ a }: { a: Assessment }) {
     return () => {
       alive = false;
       stage.frame.delete(tick);
+      tickRef.current = null;
       hide();
       disposeTree(root);
       picks.current = [];
     };
   }, [ready, stageRef, a, theme, reduce]);
+
+  useEffect(() => {
+    const stage = stageRef.current, tick = tickRef.current;
+    if (!ready || !stage || !tick || reduce || !playing) return;
+    stage.frame.add(tick);
+    return () => void stage.frame.delete(tick);
+  }, [ready, stageRef, a, theme, reduce, playing]);
 
   useEffect(() => {
     const stage = stageRef.current;
@@ -496,7 +507,7 @@ export function Diorama3D({ a }: { a: Assessment }) {
   });
 
   return (
-    <Frame3D hostRef={hostRef} stageRef={stageRef} failed={failed} tip={tip} className="h-[230px] bg-[var(--scene-sky-top)] sm:h-[330px]"
+    <Frame3D hostRef={hostRef} stageRef={stageRef} failed={failed} tip={tip} className={`${VIEW_H.diorama} bg-(--scene-sky-top)`}
       label={`3D illustration: ${q.exporter_name} exports to ${q.company} in ${q.intermediary_name}, with a possible onward route to Russia`}
       hint="Drag to rotate"
       overlay={
@@ -505,7 +516,7 @@ export function Diorama3D({ a }: { a: Assessment }) {
             <div key={l.id} ref={(el) => {
               if (el) labelEls.current.set(l.id, el);
               else labelEls.current.delete(l.id);
-            }} className="absolute left-0 top-0 whitespace-nowrap text-[15px] text-muted-foreground opacity-0">{l.text}</div>
+            }} className="absolute left-0 top-0 whitespace-nowrap text-sm text-muted-foreground opacity-0">{l.text}</div>
           ))}
         </div>
       } />

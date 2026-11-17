@@ -1,14 +1,15 @@
 "use client";
 
-import { lazy3D } from "@/components/three/lazy";
+import { lazy3D, VIEW_H } from "@/components/three/lazy";
 import { StatusBadge, sentenceCase } from "@/components/status";
 import { CompanyMark, Flag, regionName } from "@/components/visuals";
 import { entityTone, money, entityLabel, routeStatus } from "@/lib/format";
+import { CONTAINER } from "@/lib/palette";
 import { MODE_LABEL, ROUTE_MODES, type Mode } from "@/lib/routes";
 import type { Assessment } from "@/lib/types";
 import { useReducedMotion } from "@/lib/use-reduced-motion";
 
-const Diorama3D = lazy3D(() => import("@/components/three/diorama-3d").then((m) => m.Diorama3D), "3D shipment", "h-[230px] sm:h-[330px]");
+const Diorama3D = lazy3D(() => import("@/components/three/diorama-3d").then((m) => m.Diorama3D), "3D shipment", VIEW_H.diorama);
 
 /* ---------- isometric drawing helpers (2:1 projection) ---------- */
 
@@ -25,12 +26,18 @@ function plot(cx: number, cy: number, w: number, d: number) {
 }
 type Proj = ReturnType<typeof plot>;
 
+/** A shade mixed from the theme's scene tokens (app/globals.css), so the drawing follows light and dark. */
+const mix = (token: string, p: number, base = "--scene-wall") => `color-mix(in srgb, var(${token}) ${p}%, var(${base}))`;
+const WALL = { top: "var(--scene-wall)", left: "var(--scene-wall-l)", right: "var(--scene-wall-r)" };
+const STEEL = "var(--scene-steel)";
+const GLASS = "var(--scene-glass)";
+
 function Box({ p, x, y, z, w, d, h, top, left, right }: {
   p: Proj; x: number; y: number; z: number; w: number; d: number; h: number; top: string; left: string; right: string;
 }) {
   const q = (X: number, Y: number, Z: number) => p(x + X, y + Y, z + Z);
   return (
-    <g stroke="#9aa5b1" strokeWidth={0.6} strokeLinejoin="round">
+    <g stroke={mix("--scene-steel", 60)} strokeWidth={0.6} strokeLinejoin="round">
       <polygon points={pts([q(0, d, 0), q(w, d, 0), q(w, d, h), q(0, d, h)])} fill={left} />
       <polygon points={pts([q(w, 0, 0), q(w, d, 0), q(w, d, h), q(w, 0, h)])} fill={right} />
       <polygon points={pts([q(0, 0, h), q(w, 0, h), q(w, d, h), q(0, d, h)])} fill={top} />
@@ -76,35 +83,35 @@ function FlagPole({ at, code }: { at: Pt; code: string }) {
   const [x, y] = at;
   return (
     <g>
-      <line x1={x} y1={y} x2={x} y2={y - 64} stroke="#6b7684" strokeWidth={1.6} />
-      <circle cx={x} cy={y - 65} r={1.8} fill="#6b7684" />
+      <line x1={x} y1={y} x2={x} y2={y - 64} stroke={STEEL} strokeWidth={1.6} />
+      <circle cx={x} cy={y - 65} r={1.8} fill={STEEL} />
       <image href={`/flags/${code.startsWith("EU") ? "eu" : code.toLowerCase()}.svg`} x={x + 1} y={y - 63}
         width={28} height={21} preserveAspectRatio="none" />
-      <rect x={x + 1} y={y - 63} width={28} height={21} fill="none" stroke="rgba(0,0,0,0.15)" strokeWidth={0.6} />
+      <rect x={x + 1} y={y - 63} width={28} height={21} fill="none" stroke="var(--border)" strokeWidth={0.6} />
     </g>
   );
 }
 
-const PLATFORM = { top: "#eef1f4", left: "#dde2e8", right: "#cdd4dc" };
+const PLATFORM = { top: mix("--scene-steel", 10), left: mix("--scene-steel", 20), right: mix("--scene-steel", 30) };
 
 function Factory({ cx, cy, code }: { cx: number; cy: number; code: string }) {
   const p = plot(cx, cy, 110, 110);
   return (
     <g>
       <Box p={p} x={0} y={0} z={0} w={110} d={110} h={6} {...PLATFORM} />
-      <Box p={p} x={78} y={12} z={6} w={11} d={11} h={84} top="#b9c1cb" left="#c9d0d8" right="#aab3be" />
+      <Box p={p} x={78} y={12} z={6} w={11} d={11} h={84} top={mix("--scene-steel", 40)} left={mix("--scene-steel", 30)} right={mix("--scene-steel", 50)} />
       <g className="smoke">
         {[0, 1, 2].map((i) => {
           const [sx, sy] = p(83, 17, 96);
-          return <circle key={i} cx={sx} cy={sy} r={5 + i * 2} fill="#cfd6de" style={{ animationDelay: `${i * 1.2}s` }} />;
+          return <circle key={i} cx={sx} cy={sy} r={5 + i * 2} fill={mix("--scene-steel", 25)} style={{ animationDelay: `${i * 1.2}s` }} />;
         })}
       </g>
-      <Box p={p} x={10} y={28} z={6} w={88} d={66} h={38} top="#f7f9fb" left="#e7ebf0" right="#ccd4dd" />
+      <Box p={p} x={10} y={28} z={6} w={88} d={66} h={38} {...WALL} />
       {[0, 1, 2, 3].map((i) => (
-        <Box key={i} p={p} x={16 + i * 20} y={34} z={44} w={10} d={54} h={7} top="#bcd6f2" left="#a9c8ea" right="#8fb4dd" />
+        <Box key={i} p={p} x={16 + i * 20} y={34} z={44} w={10} d={54} h={7} top={mix("--scene-glass", 75)} left={GLASS} right={mix("--scene-glass", 80, "--scene-steel")} />
       ))}
-      <LeftPanes p={p} x={10} y={28} z={6} d={66} fill="#a9c8ea" items={grid(5, 1, 8, 16, 10, 10, 16, 0)} />
-      <RightPanes p={p} x={10} y={28} z={6} w={88} fill="#7d8896" items={[[14, 0, 22, 24], [42, 0, 16, 24]]} />
+      <LeftPanes p={p} x={10} y={28} z={6} d={66} fill={GLASS} items={grid(5, 1, 8, 16, 10, 10, 16, 0)} />
+      <RightPanes p={p} x={10} y={28} z={6} w={88} fill={mix("--scene-steel", 85)} items={[[14, 0, 22, 24], [42, 0, 16, 24]]} />
       <FlagPole at={p(4, 104, 6)} code={code} />
     </g>
   );
@@ -116,13 +123,13 @@ function BuyerCompound({ cx, cy, code, name, flagged }: { cx: number; cy: number
   return (
     <g>
       <Box p={p} x={0} y={0} z={0} w={110} d={110} h={6} {...PLATFORM} />
-      <Box p={p} x={14} y={14} z={6} w={40} d={40} h={98} top="#eaf2fb" left="#d5e3f3" right="#b7cbe2" />
-      <LeftPanes p={p} x={14} y={14} z={6} d={40} fill="#8fb4dd" items={grid(3, 6, 5, 12, 8, 9, 12, 14)} />
-      <RightPanes p={p} x={14} y={14} z={6} w={40} fill="#7aa1cc" items={grid(3, 6, 5, 12, 8, 9, 12, 14)} />
-      <Box p={p} x={60} y={42} z={6} w={44} d={58} h={30} top="#f7f9fb" left="#e7ebf0" right="#ccd4dd" />
-      <LeftPanes p={p} x={60} y={42} z={6} d={58} fill="#8a95a3" items={[[6, 0, 13, 20], [25, 0, 13, 20]]} />
-      <RightPanes p={p} x={60} y={42} z={6} w={44} fill="#a9b3bf" items={[[10, 18, 38, 5]]} />
-      <line x1={mx} y1={my + 8} x2={mx} y2={my + 2} stroke="#6b7684" strokeWidth={1.4} />
+      <Box p={p} x={14} y={14} z={6} w={40} d={40} h={98} top={mix("--scene-glass", 20)} left={mix("--scene-glass", 45)} right={mix("--scene-glass", 80)} />
+      <LeftPanes p={p} x={14} y={14} z={6} d={40} fill={mix("--scene-glass", 80, "--scene-steel")} items={grid(3, 6, 5, 12, 8, 9, 12, 14)} />
+      <RightPanes p={p} x={14} y={14} z={6} w={40} fill={mix("--scene-glass", 65, "--scene-steel")} items={grid(3, 6, 5, 12, 8, 9, 12, 14)} />
+      <Box p={p} x={60} y={42} z={6} w={44} d={58} h={30} {...WALL} />
+      <LeftPanes p={p} x={60} y={42} z={6} d={58} fill={mix("--scene-steel", 80)} items={[[6, 0, 13, 20], [25, 0, 13, 20]]} />
+      <RightPanes p={p} x={60} y={42} z={6} w={44} fill={mix("--scene-steel", 55)} items={[[10, 18, 38, 5]]} />
+      <line x1={mx} y1={my + 8} x2={mx} y2={my + 2} stroke={STEEL} strokeWidth={1.4} />
       <CompanyMark name={name} size={34} flagged={flagged} x={mx - 17} y={my - 34} />
       <FlagPole at={p(4, 104, 6)} code={code} />
     </g>
@@ -134,9 +141,9 @@ function Depot({ cx, cy, code }: { cx: number; cy: number; code: string }) {
   return (
     <g>
       <Box p={p} x={0} y={0} z={0} w={110} d={110} h={6} {...PLATFORM} />
-      <Box p={p} x={18} y={22} z={6} w={78} d={70} h={34} top="#f1ece8" left="#e2d9d2" right="#c9bdb4" />
-      <Box p={p} x={18} y={22} z={40} w={78} d={70} h={4} top="#d8cdc4" left="#cbbfb5" right="#b6a99f" />
-      <LeftPanes p={p} x={18} y={22} z={6} d={70} fill="#8d7f75" items={[[8, 0, 16, 22], [32, 0, 16, 22], [56, 0, 14, 22]]} />
+      <Box p={p} x={18} y={22} z={6} w={78} d={70} h={34} top={mix("--scene-warm", 25)} left={mix("--scene-warm", 55)} right="var(--scene-warm)" />
+      <Box p={p} x={18} y={22} z={40} w={78} d={70} h={4} top={mix("--scene-warm", 75)} left="var(--scene-warm)" right={mix("--scene-warm", 80, "--scene-steel")} />
+      <LeftPanes p={p} x={18} y={22} z={6} d={70} fill={mix("--scene-warm", 40, "--scene-steel")} items={[[8, 0, 16, 22], [32, 0, 16, 22], [56, 0, 14, 22]]} />
       <FlagPole at={p(4, 104, 6)} code={code} />
     </g>
   );
@@ -144,19 +151,17 @@ function Depot({ cx, cy, code }: { cx: number; cy: number; code: string }) {
 
 /* ---------- vehicles (drawn facing right, centred on the path) ---------- */
 
-const CONTAINER = ["#2a78d6", "#eb6834", "#0f766e", "#b45309", "#6250d6", "#475569"];
-
 function Ship({ n }: { n: number }) {
   return (
     <g>
       {Array.from({ length: n }, (_, i) => (
         <rect key={i} x={-27 + (i % 4) * 10} y={-12 - Math.floor(i / 4) * 7} width={9} height={6.5} rx={0.8}
-          fill={CONTAINER[i % CONTAINER.length]} stroke="#fff" strokeWidth={0.6} />
+          fill={CONTAINER[i % CONTAINER.length]} stroke="var(--card)" strokeWidth={0.6} />
       ))}
-      <rect x={14} y={-20} width={10} height={15} fill="#eef1f4" stroke="#7d8896" strokeWidth={0.6} />
-      <rect x={15.5} y={-17} width={7} height={2.5} fill="#7aa1cc" />
-      <path d="M-34 -5 L36 -5 L29 7 L-29 7 Z" fill="#1f3a5f" />
-      <path d="M-34 -5 L36 -5 L35 -2.5 L-33 -2.5 Z" fill="#d03b3b" opacity={0.85} />
+      <rect x={14} y={-20} width={10} height={15} fill="var(--scene-wall)" stroke={mix("--scene-steel", 85)} strokeWidth={0.6} />
+      <rect x={15.5} y={-17} width={7} height={2.5} fill={GLASS} />
+      <path d="M-34 -5 L36 -5 L29 7 L-29 7 Z" fill="var(--scene-vehicle)" />
+      <path d="M-34 -5 L36 -5 L35 -2.5 L-33 -2.5 Z" fill="var(--series-2)" opacity={0.85} />
     </g>
   );
 }
@@ -164,11 +169,11 @@ function Ship({ n }: { n: number }) {
 function Truck({ n }: { n: number }) {
   return (
     <g>
-      <rect x={-32} y={-20} width={40} height={16} rx={1.5} fill={CONTAINER[n % CONTAINER.length]} stroke="#fff" strokeWidth={0.6} />
-      {[0, 1, 2, 3].map((i) => <line key={i} x1={-26 + i * 9} y1={-18} x2={-26 + i * 9} y2={-6} stroke="#fff" strokeOpacity={0.35} />)}
-      <path d="M10 -15 H21 L27 -9 V-4 H10 Z" fill="#2f3e4e" />
-      <rect x={20} y={-13.5} width={4} height={4} fill="#9cc3ec" />
-      {[-24, -14, 18].map((cx) => <circle key={cx} cx={cx} cy={-2} r={3.4} fill="#1f2933" stroke="#fff" strokeWidth={0.8} />)}
+      <rect x={-32} y={-20} width={40} height={16} rx={1.5} fill={CONTAINER[n % CONTAINER.length]} stroke="var(--card)" strokeWidth={0.6} />
+      {[0, 1, 2, 3].map((i) => <line key={i} x1={-26 + i * 9} y1={-18} x2={-26 + i * 9} y2={-6} stroke="var(--card)" strokeOpacity={0.35} />)}
+      <path d="M10 -15 H21 L27 -9 V-4 H10 Z" fill="var(--scene-vehicle)" />
+      <rect x={20} y={-13.5} width={4} height={4} fill={GLASS} />
+      {[-24, -14, 18].map((cx) => <circle key={cx} cx={cx} cy={-2} r={3.4} fill="var(--scene-tyre)" stroke="var(--card)" strokeWidth={0.8} />)}
     </g>
   );
 }
@@ -176,7 +181,7 @@ function Truck({ n }: { n: number }) {
 function Plane() {
   return (
     <path d="M-26 0 L16 -2 C24 -2 28 0 28 1 C28 2 24 3 16 3 L-26 2 Z M-2 -1 L-14 -16 L-8 -16 L8 -1 Z M-2 2 L-14 16 L-8 16 L8 2 Z M-24 0 L-30 -9 L-25 -9 L-18 0 Z"
-      fill="#2f3e4e" />
+      fill="var(--scene-vehicle)" />
   );
 }
 
@@ -198,29 +203,29 @@ function Leg({ id, d, mode, alert }: { id: string; d: string; mode: Mode; alert:
     <g>
       {mode === "sea" && (
         <>
-          <path d={d} fill="none" stroke="#d6e7f8" strokeWidth={26} strokeLinecap="round" />
-          <path d={d} fill="none" stroke="#b4d2f0" strokeWidth={1.2} strokeDasharray="6 9" transform="translate(0,-6)" />
-          <path d={d} fill="none" stroke="#b4d2f0" strokeWidth={1.2} strokeDasharray="4 11" transform="translate(0,6)" />
+          <path d={d} fill="none" stroke={mix("--scene-glass", 40)} strokeWidth={26} strokeLinecap="round" />
+          <path d={d} fill="none" stroke={mix("--scene-glass", 70)} strokeWidth={1.2} strokeDasharray="6 9" transform="translate(0,-6)" />
+          <path d={d} fill="none" stroke={mix("--scene-glass", 70)} strokeWidth={1.2} strokeDasharray="4 11" transform="translate(0,6)" />
         </>
       )}
       {mode === "land" && (
         <>
-          <path d={d} fill="none" stroke="#d3d8de" strokeWidth={18} strokeLinecap="round" />
-          <path d={d} fill="none" stroke="#ffffff" strokeWidth={1.6} strokeDasharray="9 8" />
+          <path d={d} fill="none" stroke="var(--scene-wall-r)" strokeWidth={18} strokeLinecap="round" />
+          <path d={d} fill="none" stroke="var(--scene-wall)" strokeWidth={1.6} strokeDasharray="9 8" />
         </>
       )}
-      {mode === "air" && <path d={d} fill="none" stroke="#b7c0ca" strokeWidth={1.6} strokeDasharray="2 7" strokeLinecap="round" />}
+      {mode === "air" && <path d={d} fill="none" stroke={mix("--scene-steel", 45)} strokeWidth={1.6} strokeDasharray="2 7" strokeLinecap="round" />}
       <path id={id} d={d} fill="none" stroke={alert ? "var(--status-critical)" : "none"} strokeWidth={2}
         strokeDasharray="7 6" opacity={0.9} />
     </g>
   );
 }
 
-function Moving({ path, dur, begin, still, tilt, children }: {
-  path: string; dur: number; begin: number; still: Pt; tilt: boolean; children: React.ReactNode;
+function Moving({ path, dur, begin, still, tilt, playing, children }: {
+  path: string; dur: number; begin: number; still: Pt; tilt: boolean; playing: boolean; children: React.ReactNode;
 }) {
   const reduce = useReducedMotion();
-  if (reduce) return <g transform={`translate(${still[0]},${still[1]})`}>{children}</g>;
+  if (reduce || !playing) return <g transform={`translate(${still[0]},${still[1]})`}>{children}</g>;
   return (
     <g>
       {children}
@@ -237,7 +242,7 @@ function Moving({ path, dur, begin, still, tilt, children }: {
 const NODES = { exporter: 167, buyer: 500, russia: 833 };
 const GROUND = 186;
 
-export function RouteScene({ a, view }: { a: Assessment; view: "3d" | "flat" }) {
+export function RouteScene({ a, view, playing }: { a: Assessment; view: "3d" | "flat"; playing: boolean }) {
   const { query: q, route, entity, series } = a;
   const modes = ROUTE_MODES[q.intermediary] ?? { first: "land", onward: "land" };
   const last = route.points.at(-1);
@@ -252,7 +257,7 @@ export function RouteScene({ a, view }: { a: Assessment; view: "3d" | "flat" }) 
 
   return (
     <div>
-      {view === "3d" ? <Diorama3D a={a} /> : (
+      {view === "3d" ? <Diorama3D a={a} playing={playing} /> : (
       <>
       <svg viewBox="0 0 1000 268" className="w-full" role="img"
         aria-label={`Illustration: ${q.exporter_name} exports to ${q.company} in ${q.intermediary_name}, with a possible onward route to Russia`}>
@@ -269,11 +274,11 @@ export function RouteScene({ a, view }: { a: Assessment; view: "3d" | "flat" }) 
         <BuyerCompound cx={NODES.buyer} cy={GROUND} code={buyerCountry} name={q.company} flagged={flagged} />
         <Depot cx={NODES.russia} cy={GROUND} code="RU" />
         <Moving path="leg1" dur={9} begin={0} still={mid(NODES.exporter + 95, NODES.buyer - 95, modes.first)}
-          tilt={modes.first === "air"}>
+          tilt={modes.first === "air"} playing={playing}>
           <Vehicle mode={modes.first} n={shipments} />
         </Moving>
         <Moving path="leg2" dur={7} begin={2} still={mid(NODES.buyer + 95, NODES.russia - 95, modes.onward)}
-          tilt={modes.onward === "air"}>
+          tilt={modes.onward === "air"} playing={playing}>
           <Vehicle mode={modes.onward} n={Math.max(1, Math.round(shipments / 2))} />
         </Moving>
         <g className="max-sm:hidden" fontSize={13} fill="var(--muted-foreground)" textAnchor="middle">
@@ -285,16 +290,16 @@ export function RouteScene({ a, view }: { a: Assessment; view: "3d" | "flat" }) 
         {alert && (
           <g transform={`translate(${(NODES.buyer + NODES.russia) / 2}, ${modes.onward === "air" ? GROUND - 92 : GROUND - 30})`}>
             <circle r={11} fill="var(--status-critical)" />
-            <text y={4.5} textAnchor="middle" fontSize={15} fontWeight={700} fill="#fff">?</text>
+            <text y={4.5} textAnchor="middle" fontSize={15} fontWeight={700} fill="var(--on-critical)">?</text>
           </g>
         )}
       </svg>
 
-      <div className="mt-1 grid grid-cols-3 gap-3 text-center text-[14px] leading-snug">
+      <div className="mt-1 grid grid-cols-3 gap-3 text-center text-sm leading-snug">
         <div className="flex flex-col items-center gap-1">
           <div className="flex items-center gap-1.5 font-bold"><Flag code={q.exporter} /> {q.exporter_name}</div>
           <div className="text-muted-foreground">Exporter · HS {a.classification.hs}</div>
-          {last && <div className="tabular">{money(last.value, series.unit)} in {last.year}
+          {last && <div>{money(last.value, series.unit)} in {last.year}
             {route.multiplier !== null && <span className="text-muted-foreground"> · Exports vs pre-war: {route.multiplier.toFixed(1)}×</span>}</div>}
         </div>
         <div className="flex flex-col items-center gap-1">
@@ -311,7 +316,7 @@ export function RouteScene({ a, view }: { a: Assessment; view: "3d" | "flat" }) 
         <div className="flex flex-col items-center gap-1">
           <div className="flex items-center gap-1.5 font-bold"><Flag code="RU" /> Russia</div>
           <div className="text-muted-foreground">Sanctioned destination</div>
-          {ruDrop !== null && <div className="tabular">Direct exports {ruDrop > 0 ? "−" : "+"}{Math.abs(ruDrop)}%</div>}
+          {ruDrop !== null && <div>Direct exports {ruDrop > 0 ? "−" : "+"}{Math.abs(ruDrop)}%</div>}
           <StatusBadge tone={routeStatus(route.band, route.no_baseline).tone}>
             <span className="max-sm:hidden">Route risk</span> {sentenceCase(routeStatus(route.band, route.no_baseline).label)}
           </StatusBadge>

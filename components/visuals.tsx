@@ -1,7 +1,23 @@
 "use client";
 
+import { ArrowRightIcon } from "@phosphor-icons/react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
+
+/** A route arrow drawn as an icon (the UI font has no arrow glyph); screen readers hear "to". */
+export function To({ className }: { className?: string }) {
+  return (
+    <>
+      <ArrowRightIcon className={cn("inline size-3.5 shrink-0 align-[-2px] text-faint", className)} aria-hidden />
+      <span className="sr-only">to</span>
+    </>
+  );
+}
+
+/** A name, marked as Russian when it is written in Cyrillic, so screen readers switch voice. */
+export function Name({ children }: { children: string }) {
+  return /[\u0400-\u04FF]/.test(children) ? <span lang="ru">{children}</span> : <>{children}</>;
+}
 
 const REGION = typeof Intl !== "undefined" ? new Intl.DisplayNames(["en"], { type: "region" }) : null;
 
@@ -30,7 +46,7 @@ export function Flag({ code, size = 16, className }: { code: string; size?: numb
       width={size}
       height={Math.round(size * 0.75)}
       unoptimized
-      className={cn("inline-block shrink-0 rounded-[2px] object-cover ring-1 ring-black/10", className)}
+      className={cn("inline-block shrink-0 rounded-xs object-cover ring-1 ring-foreground/15", className)}
       style={{ width: size, height: Math.round(size * 0.75) }}
     />
   );
@@ -49,7 +65,7 @@ function hash(s: string): number {
   return Math.abs(h);
 }
 
-export function initials(name: string): string {
+function initials(name: string): string {
   const words = name
     .replace(/["'«»“”.,()]/g, " ")
     .split(/\s+/)

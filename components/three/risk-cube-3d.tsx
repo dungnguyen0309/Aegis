@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { Frame3D, type Tip, tipAt, usePicking, useStage } from "@/components/three/frame";
+import { VIEW_H } from "@/components/three/lazy";
 import { StatusBadge } from "@/components/status";
 import { Flag, regionName } from "@/components/visuals";
 import { entityTone, toneVar, verdictTone, entityLabel } from "@/lib/format";
@@ -204,7 +205,7 @@ export function RiskCube3D({ rows, onAssess }: { rows: BatchRowOut[]; onAssess?:
   });
 
   return (
-    <Frame3D hostRef={hostRef} stageRef={stageRef} failed={failed} tip={tip} className="h-[360px] bg-card sm:h-[440px]"
+    <Frame3D hostRef={hostRef} stageRef={stageRef} failed={failed} tip={tip} className={`${VIEW_H.cube} bg-card`}
       label={`3D scatter of ${rows.length} buyers by similarity, route risk and item tier`}
       hint="Drag to rotate · click a point to assess"
       overlay={labelled && (
@@ -213,7 +214,7 @@ export function RiskCube3D({ rows, onAssess }: { rows: BatchRowOut[]; onAssess?:
             <div key={i} ref={(el) => {
               if (el) labelEls.current.set(i, el);
               else labelEls.current.delete(i);
-            }} className="absolute left-0 top-0 max-w-[180px] truncate text-[14px] text-foreground opacity-0 [text-shadow:0_0_3px_var(--card),0_0_3px_var(--card)]">
+            }} className="absolute left-0 top-0 max-w-45 truncate text-sm text-foreground opacity-0 [text-shadow:0_0_3px_var(--card),0_0_3px_var(--card)]">
               {r.company}
             </div>
           ))}

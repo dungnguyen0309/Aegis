@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowRightIcon, CubeIcon, DownloadSimpleIcon, ListChecksIcon, SpinnerGapIcon, TableIcon, UploadSimpleIcon, WarningIcon, XIcon } from "@phosphor-icons/react";
-import { lazy3D } from "@/components/three/lazy";
+import { lazy3D, VIEW_H } from "@/components/three/lazy";
 import { useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { Segmented } from "@/components/corridor-panel";
 import { Button } from "@/components/ui/button";
@@ -11,12 +11,12 @@ import { ProductArt } from "@/components/product-art";
 import { sentenceCase, StatusBadge } from "@/components/status";
 import { CompanyMark, Flag } from "@/components/visuals";
 import { api } from "@/lib/api";
-import { entityLabel, entityTone, verdictSolid, verdictTone, routeStatus } from "@/lib/format";
+import { entityLabel, entityTone, verdictSolid, verdictTone, routeStatus, NONE } from "@/lib/format";
 import { useIntent } from "@/lib/use-intent";
 import { cn } from "@/lib/utils";
 import type { BatchResult, BatchRowIn, BatchRowOut, VerdictCode } from "@/lib/types";
 
-const RiskCube3D = lazy3D(() => import("@/components/three/risk-cube-3d").then((m) => m.RiskCube3D), "Risk cube", "h-[360px] sm:h-[440px]");
+const RiskCube3D = lazy3D(() => import("@/components/three/risk-cube-3d").then((m) => m.RiskCube3D), "Risk cube", VIEW_H.cube);
 
 const SAMPLE = `company,country,hs,intermediary
 Northwind Components LLP,KZ,848210,KZ
@@ -51,17 +51,17 @@ function ItemCell({ r }: { r: BatchRowOut }) {
   return r.hs ? (
     <div className="flex items-center gap-2">
       <ProductArt hs={r.hs} size={24} />
-      <span className="tabular">{r.hs}</span>
+      <span>{r.hs}</span>
       <span className="text-muted-foreground">{r.chpl_tier ? `Tier ${r.chpl_tier}` : "Not on item list"}</span>
     </div>
-  ) : <span className="text-faint">—</span>;
+  ) : <span className="text-faint">{NONE}</span>;
 }
 
 /** What the server could not use from this row, so a partial result is never mistaken for a full one. */
 function Issues({ r }: { r: BatchRowOut }) {
   if (!r.issues.length) return null;
   return (
-    <ul className="mt-1 space-y-0.5 text-[15px] text-warning-ink">
+    <ul className="mt-1 space-y-0.5 text-sm text-warning-ink">
       {r.issues.map((t) => <li key={t} className="flex gap-1.5"><WarningIcon className="mt-0.5 size-3.5 shrink-0" aria-hidden />{t}</li>)}
     </ul>
   );
@@ -73,14 +73,16 @@ function RouteCell({ r }: { r: BatchRowOut }) {
       <Flag code={r.intermediary} size={14} />
       <StatusBadge tone={routeStatus(r.route_band, r.route_no_baseline).tone}>{`${r.route_score} ${routeStatus(r.route_band, r.route_no_baseline).label}`}</StatusBadge>
     </div>
-  ) : <span className="text-faint">—</span>;
+  ) : <span className="text-faint">{NONE}</span>;
 }
 
-/** Minimal CSV parser: commas, quoted fields, optional header row. Counts the rows it leaves out. */
-function parseCsv(text: string): { rows: BatchRowIn[]; short: number; extra: number } {
+/** Minimal CSV parser: commas, quoted fields, optional header row. Reports the 1-based lines of rows it leaves out. */
+function parseCsv(text: string): { rows: BatchRowIn[]; short: number[]; extra: number } {
   const rows: string[][] = [];
-  for (const line of text.split(/\r?\n/)) {
+  const at: number[] = [];
+  for (const [n, line] of text.split(/\r?\n/).entries()) {
     if (!line.trim()) continue;
+    at.push(n + 1);
     const cells: string[] = [];
     let cur = "", quoted = false;
     for (let i = 0; i < line.length; i++) {
@@ -94,15 +96,17 @@ function parseCsv(text: string): { rows: BatchRowIn[]; short: number; extra: num
     cells.push(cur.trim());
     rows.push(cells);
   }
-  if (!rows.length) return { rows: [], short: 0, extra: 0 };
+  if (!rows.length) return { rows: [], short: [], extra: 0 };
   const header = rows[0].map((h) => h.toLowerCase());
   const hasHeader = header.includes("company");
   const idx = (name: string, fallback: number) => (hasHeader ? header.indexOf(name) : fallback);
   const [ci, co, hs, im] = [idx("company", 0), idx("country", 1), idx("hs", 2), idx("intermediary", 3)];
-  const all = (hasHeader ? rows.slice(1) : rows)
+  const skip = Number(hasHeader);
+  const all = rows.slice(skip)
     .map((r) => ({ company: r[ci] ?? "", country: co >= 0 ? r[co] : undefined, hs: hs >= 0 ? r[hs] : undefined, intermediary: im >= 0 ? r[im] : undefined }));
   const named = all.filter((r) => r.company.length >= 2);
-  return { rows: named.slice(0, 200), short: all.length - named.length, extra: Math.max(0, named.length - 200) };
+  const short = all.flatMap((r, i) => (r.company.length >= 2 ? [] : [at[i + skip]]));
+  return { rows: named.slice(0, 200), short, extra: Math.max(0, named.length - 200) };
 }
 
 function toCsv(result: BatchResult): string {
@@ -140,18 +144,21 @@ export function BatchView({ state, onState, onAssess, onPrefetch }: {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const file = useRef<HTMLInputElement>(null);
+  const ctrl = useRef<AbortController | null>(null);
   const { rows, short, extra } = parseCsv(text);
   const stale = result !== null && state.ran !== undefined && text !== state.ran;
   const flagged = result ? result.rows.filter((r) => r.issues.length).length : 0;
 
   const run = async () => {
     const screened = text;
+    ctrl.current = new AbortController();
     setLoading(true);
     setError(null);
     setOnly(null);
     try {
-      setResult(await api.batch(rows, "DE"), screened);
+      setResult(await api.batch(rows, "DE", ctrl.current.signal), screened);
     } catch (e) {
+      if (ctrl.current?.signal.aborted) return;
       setError(e instanceof Error ? e.message : "Batch screening failed. Try again.");
     } finally {
       setLoading(false);
@@ -166,40 +173,48 @@ export function BatchView({ state, onState, onAssess, onPrefetch }: {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Batch screening" description="Up to 200 buyers" />
+      <PageHeader title="Batch screening" description="Up to 200 buyers · exporter Germany" />
 
       <Panel title="Buyers">
         <textarea value={text} onChange={(e) => setText(e.target.value)} rows={8} spellCheck={false}
           placeholder="Paste CSV rows: company,country,hs,intermediary" aria-label="Buyers as CSV"
-          className="w-full resize-y border border-input bg-transparent px-3 py-2 text-[15px] tabular outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring" />
-        {(short > 0 || extra > 0) && (
-          <p className="mt-2 text-[15px] text-muted-foreground" role="status">
+          className="w-full resize-y border border-input bg-transparent px-3 py-2 text-base outline-none sm:text-sm placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring" />
+        {(short.length > 0 || extra > 0) && (
+          <p className="mt-2 text-sm text-muted-foreground" role="status">
             {extra > 0 && `First 200 rows screened; ${extra} left out. `}
-            {short > 0 && `${short} row${short === 1 ? "" : "s"} skipped: name missing or under 2 characters.`}
+            {short.length > 0 && `${short.length} row${short.length === 1 ? "" : "s"} skipped (line${short.length === 1 ? "" : "s"} ${short.slice(0, 5).join(", ")}${short.length > 5 ? ", …" : ""}): name missing or under 2 characters.`}
           </p>
         )}
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <input ref={file} type="file" accept=".csv,text/csv,text/plain" className="hidden"
             onChange={async (e) => { const f = e.target.files?.[0]; if (f) setText(await f.text()); e.target.value = ""; }} />
           <Button variant="outline" onClick={() => file.current?.click()}><UploadSimpleIcon /> Upload CSV</Button>
-          <Button variant="outline" onClick={() => setText(SAMPLE)}><ListChecksIcon /> Load sample</Button>
+          {/* Only on an empty list, so it never replaces pasted rows */}
+          {!text.trim() && <Button variant="outline" onClick={() => setText(SAMPLE)}><ListChecksIcon /> Load sample</Button>}
           <Button onClick={run} disabled={loading || rows.length === 0}>
             {loading ? <SpinnerGapIcon className="animate-spin" /> : <ListChecksIcon />}
-            {loading ? "Screening…" : rows.length ? `Screen ${rows.length} row${rows.length === 1 ? "" : "s"}` : "Screen buyers"}
+            {loading ? `Screening ${rows.length} buyer${rows.length === 1 ? "" : "s"}…` : rows.length ? `Screen ${rows.length} buyer${rows.length === 1 ? "" : "s"}` : "Screen buyers"}
           </Button>
-          {error && <span className="text-[15px] text-destructive">{error}</span>}
+          {loading && <Button variant="ghost" onClick={() => ctrl.current?.abort()}><XIcon /> Cancel</Button>}
+          {/* Why the button is off */}
+          {!loading && rows.length === 0 && <span className="text-sm text-muted-foreground">Add at least one row to screen.</span>}
+          {error && <span role="alert" className="text-sm text-destructive">{error}</span>}
         </div>
+        {/* Always mounted, so screen readers hear when screening starts and finishes */}
+        <p role="status" className="sr-only">
+          {loading ? `Screening ${rows.length} buyer${rows.length === 1 ? "" : "s"}…` : result ? `${result.count} buyer${result.count === 1 ? "" : "s"} screened` : ""}
+        </p>
       </Panel>
 
       {!result && (
         <Panel title="Columns" subtitle="Header row optional" bodyClassName="p-0">
-          <Table className="text-[15px]">
+          <Table className="text-sm">
             <TableHeader>
               <TableRow>
                 <TableHead className="pl-4">Column</TableHead>
                 <TableHead>Required</TableHead>
                 <TableHead>What to enter</TableHead>
-                <TableHead className="pr-4">Example</TableHead>
+                <TableHead className="pr-4 max-sm:hidden">Example</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -207,8 +222,12 @@ export function BatchView({ state, onState, onAssess, onPrefetch }: {
                 <TableRow key={name}>
                   <TableCell className="pl-4 font-bold">{name}</TableCell>
                   <TableCell>{needed}</TableCell>
-                  <TableCell className="whitespace-normal text-muted-foreground">{what}</TableCell>
-                  <TableCell className="whitespace-normal pr-4 tabular">{example}</TableCell>
+                  <TableCell className="whitespace-normal text-muted-foreground max-sm:pr-4">
+                    {what}
+                    {/* Phones: the example sits here, so the table fits without scrolling sideways */}
+                    <span className="block text-foreground sm:hidden">e.g. {example}</span>
+                  </TableCell>
+                  <TableCell className="whitespace-normal pr-4 max-sm:hidden">{example}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -218,7 +237,7 @@ export function BatchView({ state, onState, onAssess, onPrefetch }: {
 
       {result && (
         <Panel title="Results" tour="cube"
-          subtitle={`${result.count} buyer${result.count === 1 ? "" : "s"}, most severe first`}
+          subtitle={`${result.count} buyer${result.count === 1 ? "" : "s"}, most severe first · exporter Germany`}
           action={<>
             <Segmented value={mode} onChange={setMode} options={[
               { value: "table", label: "Table", icon: <TableIcon className="size-4" /> },
@@ -227,14 +246,14 @@ export function BatchView({ state, onState, onAssess, onPrefetch }: {
             <Button size="sm" variant="outline" onClick={download}><DownloadSimpleIcon /> Download CSV</Button>
           </>}>
           {/* Always mounted, so screen readers announce the text when the list changes */}
-          <p role="status" className={stale ? "mb-3 flex items-center gap-2 border border-[color-mix(in_srgb,var(--status-warning)_55%,transparent)] bg-[color-mix(in_srgb,var(--status-warning)_12%,transparent)] px-3 py-2 text-[16px]" : "sr-only"}>
+          <p role="status" className={stale ? "mb-3 flex items-center gap-2 callout-warning border px-3 py-2 text-base" : "sr-only"}>
             {stale && <>
               <WarningIcon className="size-4 shrink-0 text-warning-ink" aria-hidden />
               List changed since this screening.
             </>}
           </p>
           {flagged > 0 && mode === "table" && (
-            <p className="mb-3 text-[16px] text-muted-foreground">
+            <p className="mb-3 text-base text-muted-foreground">
               {flagged} row{flagged === 1 ? "" : "s"} partly checked
             </p>
           )}
@@ -242,12 +261,12 @@ export function BatchView({ state, onState, onAssess, onPrefetch }: {
             {(Object.keys(result.summary) as VerdictCode[]).filter((k) => result.summary[k] > 0).map((k) => (
               <button key={k} type="button" onClick={() => setOnly(only === k ? null : k)} aria-pressed={only === k}
                 title={only === k ? "Show all rows" : `Show only ${sentenceCase(k)}`}
-                className={cn("transition-opacity", only && only !== k && "opacity-40 hover:opacity-80")}>
+                className={cn("inline-flex items-center transition-[filter] pointer-coarse:min-h-11", only && only !== k && "grayscale hover:grayscale-0")}>
                 <StatusBadge tone={verdictTone[k]} solid={verdictSolid(k)}>{`${result.summary[k]} ${k}`}</StatusBadge>
               </button>
             ))}
             {only && (
-              <button type="button" onClick={() => setOnly(null)} className="inline-flex items-center gap-1 text-[14px] text-muted-foreground hover:text-foreground">
+              <button type="button" onClick={() => setOnly(null)} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground pointer-coarse:min-h-11">
                 <XIcon className="size-3.5" /> Show all
               </button>
             )}
@@ -255,7 +274,7 @@ export function BatchView({ state, onState, onAssess, onPrefetch }: {
           {mode === "3d" ? (
             <>
               <RiskCube3D rows={shown} onAssess={onAssess} />
-              <p className="mt-2 text-[15px] text-muted-foreground">Diamonds: sanctions match. Shaded: Stop and Hold zones.</p>
+              <p className="mt-2 text-sm text-muted-foreground">Diamonds: sanctions match. Shaded: Stop and Hold zones.</p>
             </>
           ) : (
           <>
@@ -271,7 +290,7 @@ export function BatchView({ state, onState, onAssess, onPrefetch }: {
                   <StatusBadge tone={verdictTone[r.verdict]} solid={verdictSolid(r.verdict)}>{r.verdict}</StatusBadge>
                 </div>
                 <Issues r={r} />
-                <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-[15px]">
+                <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-sm">
                   <dt className="text-muted-foreground">Sanctions screening</dt><dd><SanctionsCell r={r} /></dd>
                   <dt className="text-muted-foreground">Item</dt><dd><ItemCell r={r} /></dd>
                   <dt className="text-muted-foreground">Route risk</dt><dd><RouteCell r={r} /></dd>
@@ -286,7 +305,7 @@ export function BatchView({ state, onState, onAssess, onPrefetch }: {
             ))}
           </ul>
           <div className="overflow-x-auto max-md:hidden">
-            <Table className="text-[15px]">
+            <Table className="text-sm">
               <TableHeader>
                 <TableRow>
                   <TableHead>Action</TableHead>

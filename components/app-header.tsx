@@ -1,10 +1,10 @@
 "use client";
 
-import { BinocularsIcon, MoonIcon, SunIcon } from "@phosphor-icons/react";
+import { BinocularsIcon, MonitorIcon, MoonIcon, SunIcon } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { MethodologyDialog } from "@/components/methodology-dialog";
 import type { Reference } from "@/lib/types";
-import { useTheme } from "@/lib/theme";
+import { useTheme, type ThemeChoice } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
 export type View = "radar" | "assess" | "batch" | "calc";
@@ -21,21 +21,19 @@ function Brand() {
         <circle cx="16" cy="20.5" r="1.6" fill="currentColor" />
         <circle cx="21.2" cy="11.8" r="2.3" fill="var(--status-critical)" />
       </svg>
-      <div className="leading-none">
-        <div className="text-[19px] font-bold">Aegis</div>
-        <div className="mt-0.5 hidden text-[14px] leading-snug text-muted-foreground xl:block">
-          Open-Source Trade Intelligence &amp; Dual-Use Sanctions Radar
-        </div>
-      </div>
+      <div className="text-lg font-bold leading-none">Aegis</div>
     </div>
   );
 }
 
-const NAV: { view: View; label: string; short: string }[] = [
-  { view: "assess", label: "Assessment", short: "Assessment" },
-  { view: "radar", label: "Radar", short: "Radar" },
-  { view: "batch", label: "Batch screening", short: "Batch" },
-  { view: "calc", label: "Calculator", short: "Calculator" },
+const THEME_NAME: Record<ThemeChoice, string> = { light: "Light", dark: "Dark", system: "System" };
+const THEME_ICON = { light: SunIcon, dark: MoonIcon, system: MonitorIcon };
+
+const NAV: { view: View; label: string }[] = [
+  { view: "assess", label: "Assessment" },
+  { view: "radar", label: "Radar" },
+  { view: "batch", label: "Batch" },
+  { view: "calc", label: "Calculator" },
 ];
 
 export function AppHeader({ reference, view, onView, onTour }: {
@@ -44,29 +42,39 @@ export function AppHeader({ reference, view, onView, onTour }: {
   onView: (v: View) => void;
   onTour: () => void;
 }) {
-  const { theme, setTheme } = useTheme();
-  const dark = theme === "dark";
+  const { theme, choice, setTheme } = useTheme();
+  // Light, dark, then back to following the system; from system, the first click always changes what is shown
+  const next: ThemeChoice = choice === "light" ? "dark" : choice === "dark" ? "system" : theme === "dark" ? "light" : "dark";
+  const ThemeIcon = THEME_ICON[choice];
   return (
-    <header className="border-b border-border bg-card">
-      <div className="mx-auto flex max-w-[1440px] flex-wrap items-center gap-x-6 px-4 sm:px-6">
+    // Stays on screen from desktop width (one row); below that it can wrap and would take too much of the screen
+    <header className="z-30 border-b border-border bg-card lg:sticky lg:top-0">
+      <div className="mx-auto flex max-w-app flex-wrap items-center gap-x-6 px-4 sm:px-6">
         <div className="flex h-14 items-center"><Brand /></div>
-        <nav className="order-last -mx-4 flex w-full gap-1 overflow-x-auto border-t border-border px-4 md:order-none md:mx-0 md:h-14 md:w-auto md:border-0 md:px-0"
+        {/* Links, so a view opens in a new tab with a middle click; a plain click switches in place */}
+        <nav className="order-last -mx-4 flex w-full items-center gap-0.5 scroll-row sm:gap-1 py-1.5 md:py-0 border-t border-border px-4 md:order-none md:mx-0 md:h-14 md:w-auto md:border-0 md:px-0"
           aria-label="Views">
-          {NAV.map(({ view: v, label, short }) => (
-            <button key={v} type="button" onClick={() => onView(v)} data-tour={v === "radar" ? "nav-radar" : undefined}
+          {NAV.map(({ view: v, label }) => (
+            <a key={v} href={v === "assess" ? "/" : `/?view=${v}`} data-tour={v === "radar" ? "nav-radar" : undefined}
+              onClick={(e) => {
+                if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+                e.preventDefault();
+                onView(v);
+              }}
               aria-current={view === v ? "page" : undefined}
-              className={cn("flex shrink-0 items-center border-b-2 px-2.5 py-2.5 text-[16px] transition-colors sm:px-3",
-                view === v ? "border-foreground font-bold text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}>
-              <span className="sm:hidden">{short}</span><span className="max-sm:hidden">{label}</span>
-            </button>
+              // Views are filled, a case's sections are underlined: the two levels never look alike
+              className={cn("flex shrink-0 items-center px-3 py-1.5 text-base font-medium transition-colors max-sm:px-2 max-sm:text-sm pointer-coarse:py-3 focus-visible:-outline-offset-2",
+                view === v ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground")}>
+              {label}
+            </a>
           ))}
         </nav>
-        <div className="ml-auto flex h-14 items-center gap-1.5">
-          <Button variant="ghost" size="sm" onClick={onTour}><BinocularsIcon /> Tour</Button>
+        <div className="ml-auto flex min-h-14 flex-wrap items-center justify-end gap-1.5">
+          <Button variant="ghost" size="sm" className="text-base max-sm:text-sm" onClick={onTour}><BinocularsIcon /> Tour</Button>
           <MethodologyDialog reference={reference} />
-          <Button variant="ghost" size="icon-sm" onClick={() => setTheme(dark ? "light" : "dark")}
-            aria-label={dark ? "Switch to light theme" : "Switch to dark theme"} title={dark ? "Switch to light theme" : "Switch to dark theme"}>
-            {dark ? <SunIcon /> : <MoonIcon />}
+          <Button variant="ghost" size="icon-sm" onClick={() => setTheme(next)}
+            aria-label={`Theme: ${THEME_NAME[choice]}. Switch to ${THEME_NAME[next].toLowerCase()}`} title={`Theme: ${THEME_NAME[choice]}`}>
+            <ThemeIcon />
           </Button>
         </div>
       </div>

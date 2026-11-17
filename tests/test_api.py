@@ -1,7 +1,9 @@
+import re
+
 import pytest
 from fastapi.testclient import TestClient
 
-from _lib import anomaly, hs_codes
+from _lib import anomaly, hs_codes, memo
 from _lib.names import normalize
 from index import app
 
@@ -49,17 +51,44 @@ def test_clean_buyer_on_critical_route_is_red_flag():
     assert a["route"]["diversion_pattern"]
     assert a["verdict"]["code"] == "RED FLAG"
     assert a["series"]["mode"] == "demo" and a["series"]["unit"] == "EUR"
+    # "Mandatory" comes with its first steps in the action box: hold, end-use statement, (12g clause), corporate DD
+    steps = a["verdict"]["actions"]
+    assert steps[0].startswith("Do not ship") and "end-use statement" in steps[1] and "corporate due diligence" in steps[-1]
+    assert len(steps) == (4 if a["classification"]["chpl"] else 3)
+    assert any("12g" in s for s in steps) == a["classification"]["chpl"]
+
+
+def test_elevated_lists_the_first_steps_without_a_hold():
+    v = memo.decide({"status": "CLEAN"}, {"band": "HIGH"}, {"chpl": False})
+    assert v["code"] == "ELEVATED" and len(v["actions"]) == 2
+    assert v["notes"][0].startswith("A clean sanctions screening does not offset route risk")
+    assert not any(s.startswith("Do not ship") for s in v["actions"])
+    assert memo.decide({"status": "CLEAN"}, {"band": "LOW"}, {"chpl": False})["actions"] == []
+    assert v["required"] == []
+
+
+def test_elevated_marks_the_12g_clause_as_required():
+    # Phones fold Elevated steps after the first; a step the law requires must stay marked so it never folds
+    v = memo.decide({"status": "CLEAN"}, {"band": "HIGH"}, {"chpl": True})
+    assert v["code"] == "ELEVATED" and len(v["actions"]) == 3
+    assert v["required"] == [s for s in v["actions"] if "12g" in s] and len(v["required"]) == 1
 
 
 def test_listed_entity_stops_the_deal():
     a = assess(company="OOO Радиоавтоматика", jurisdiction="RU", hs="854231", intermediary="AM")
     assert a["entity"]["status"] == "MATCH"
     assert a["verdict"]["code"] == "STOP"
-    assert len(a["verdict"]["actions"]) == 3
+    # No contract goes ahead on a Stop, so the 12g clause note is noise there
+    assert not any("12g" in n for n in a["verdict"]["notes"])
+    assert any("12g" in n for n in memo.decide({"status": "CLEAN"}, {"band": "LOW"}, {"chpl": True})["notes"])
+    # Stop now, check the match, escalate, record: the hit is not yet confirmed by an officer
+    assert len(a["verdict"]["actions"]) == 4 and a["verdict"]["title"].startswith("Likely")
     m = client.post("/api/memo", json={**BASE, "company": "OOO Радиоавтоматика", "jurisdiction": "RU",
                                        "hs": "854231", "intermediary": "AM"}).json()
     assert m["edd"] == a["verdict"]["actions"]  # a Stop briefing lists only the stop steps
     assert "## Required actions" in m["markdown"] and "end-use statement" not in m["markdown"]
+    # The German job title stays out of the steps and appears once, under Legal exposure
+    assert not any("Ausfuhr" in s for s in m["edd"]) and any("Ausfuhrverantwortliche" in x for x in m["legal"])
 
 
 def test_missing_baseline_is_not_reported_as_low_risk():
@@ -81,7 +110,7 @@ def test_validation():
     for code in ("999999", "980000", "770000", "000000"):  # outside HS chapters 01-97 (77 reserved)
         r = client.post("/api/assess", json={**BASE, "company": "X Co", "hs": code, "intermediary": "KZ"})
         assert r.status_code == 422, code
-        assert "chapters run from 01 to 97" in r.text
+        assert f"{code[:2]} is not an HS chapter" in r.text and r.json()["detail"][0]["loc"][-1] == "hs"
 
 
 def test_memo_sections():
@@ -89,7 +118,13 @@ def test_memo_sections():
                                        "hs": "854239", "intermediary": "KG"}).json()
     assert m["engine"] == "rules"
     assert m["findings"] and m["legal"] and m["edd"]
+    # A clean buyer reads as neither a match nor a possible match
+    assert any(f["text"].startswith("No match and no possible match") and "for the 1 name screened" in f["text"]
+               for f in m["findings"]), m["findings"]
     assert "Art. 12g" in m["markdown"] and "§ 18 AWG" in m["markdown"]
+    # The peak year reads in plain words; the Z-score stays in the Route tab
+    peak = next(f["text"] for f in m["findings"] if "Peak year" in f["text"])
+    assert re.search(r"Peak year \d{4}: (far above|within) the pre-war range\.", peak), peak
 
 
 def test_zscore_maths():
@@ -182,6 +217,22 @@ def test_assessment_includes_new_signals():
     assert a["sankey"] and len(a["sankey"]["links"]) == 12
 
 
+def test_monthly_finding_reads_as_change():
+    m = client.post("/api/memo", json={**BASE, "company": "Northwind Components LLP", "jurisdiction": "KZ",
+                                       "hs": "848210", "intermediary": "KZ"}).json()
+    text = next(f["text"] for f in m["findings"] if f["area"] == "Monthly exports")
+    # Same wording as the app's KPI and radar, naming the flow: "Exports to Kazakhstan, 2026 Jan–Aug vs 2021: -88%"
+    assert re.match(r"Exports to Kazakhstan, \d{4} Jan(–[A-Z][a-z]{2})? vs 2021: [+-]\d+%\.", text), text
+
+
+def test_memo_writes_hs_as_the_app_does():
+    m = client.post("/api/memo", json={**BASE, "company": "Northwind Components LLP", "jurisdiction": "KZ",
+                                       "hs": "848210", "intermediary": "KZ"}).json()
+    assert "HS 8482.10" in m["subject"]
+    texts = " ".join(f["text"] for f in m["findings"]) + m["subject"]
+    assert "848210" not in texts and "HS 8482.10" in texts
+
+
 def test_monthly_stats_maths():
     months = [f"{y}-{m:02d}" for y in (2021, 2022, 2023) for m in range(1, 13)] + ["2024-01", "2024-02"]
     values = [100] * 12 + [100] + [100] * 11 + [100] * 12 + [400, 200]
@@ -216,7 +267,8 @@ def test_batch_screening():
     assert by["Northwind Components LLP"]["verdict"] == "RED FLAG" and by["Northwind Components LLP"]["route_band"] == "CRITICAL"
     # no covered transit country: only the name was screened, never a green Standard
     assert by["Tailspin Toys GmbH"]["chpl_tier"] is None and by["Tailspin Toys GmbH"]["verdict"] == "NAME ONLY"
-    assert "transit" in by["Tailspin Toys GmbH"]["issues"][0]
+    issue = by["Tailspin Toys GmbH"]["issues"][0]
+    assert issue.startswith("Germany is not a covered transit country") and "intermediary column (KZ," in issue
     assert by["Northwind Components LLP"]["issues"] == []
     assert out["rows"][0]["verdict"] == "STOP"  # sorted by severity
 
@@ -316,3 +368,65 @@ def test_route_without_any_trade_data_is_not_standard(monkeypatch):
     assert not any("No pre-war trade" in n for n in a["verdict"]["notes"])
     m = client.post("/api/memo", json={**BASE, "company": "Plain Trading Co", "hs": "950300", "intermediary": "KZ"})
     assert m.status_code == 200 and m.json()["verdict"]["code"] == "NAME ONLY"
+
+
+def test_officer_decisions_clear_or_confirm_a_match():
+    req = {**BASE, "company": "Acme Trading GmbH", "ubos": ["Sberbank"], "hs": "854231", "intermediary": "KG"}
+    a = assess(**req)
+    owner = next(s for s in a["entity"]["subjects"] if s["name"] == "Sberbank")
+    assert a["verdict"]["code"] == "STOP" and a["entity"]["unreviewed"] == 1
+    hits = [m for m in owner["matches"] if m["score"] >= 80]
+
+    def review(decision, matches, reason="Different registration number"):
+        return [{"subject": "Sberbank", "match_id": m["id"], "decision": decision, "reason": reason} for m in matches]
+
+    # Every hit cleared: the owner is clean again, the stop lifts and the briefing keeps the reasons
+    cleared = {**req, "reviews": review("different", hits)}
+    b = assess(**cleared)
+    assert b["verdict"]["code"] != "STOP" and b["entity"]["unreviewed"] == 0
+    assert any("cleared" in n for n in b["verdict"]["notes"])
+    memo = client.post("/api/memo", json=cleared).json()
+    assert len(memo["reviews"]) == len(hits) and "## Match decisions" in memo["markdown"]
+
+    # The top hit confirmed: the title says so and the review step is gone
+    c = assess(**req, reviews=review("same", hits[:1]))
+    assert c["verdict"]["title"] == "Sanctions match confirmed: do not proceed"
+    assert len(c["verdict"]["actions"]) == 3
+
+    # The buyer confirmed while another name still has an open possible match: the title follows the
+    # confirmed match, and the review step stays for the open one
+    mixed = assess(**{**req, "company": "Sberbank", "ubos": ["Sberbank CIB"]})
+    buyer = mixed["entity"]["subjects"][0]
+    m = assess(**{**req, "company": "Sberbank", "ubos": ["Sberbank CIB"], "reviews": [
+        {"subject": "Sberbank", "match_id": buyer["matches"][0]["id"], "decision": "same", "reason": "Same bank, same register"}]})
+    assert m["entity"]["unreviewed"] == 1
+    assert m["verdict"]["title"] == "Sanctions match confirmed: do not proceed"
+    assert any("Buyer tab" in s for s in m["verdict"]["actions"])
+
+    # A decision needs a reason
+    blank = client.post("/api/assess", json={**req, "reviews": review("different", hits[:1], reason="  ")})
+    assert blank.status_code == 422
+
+
+def test_decision_time_reaches_the_briefing_and_no_country_is_not_unknown():
+    req = {**BASE, "company": "Acme Trading GmbH", "ubos": ["Sberbank"], "hs": "854231", "intermediary": "KG"}
+    hit = next(m for s in assess(**req)["entity"]["subjects"] if s["name"] == "Sberbank" for m in s["matches"])
+    reviews = [{"subject": "Sberbank", "match_id": hit["id"], "decision": "different",
+                "reason": "Private person", "at": "2026-11-16T09:30:00Z", "by": "J. Doe"}]
+    memo = client.post("/api/memo", json={**req, "reviews": reviews}).json()
+    assert memo["reviews"][0]["at"] == "2026-11-16T09:30:00Z"
+    assert "recorded 2026-11-16 09:30 UTC by J. Doe" in memo["markdown"]
+    assert memo["reviews"][0]["by"] == "J. Doe"
+    short = client.post("/api/assess", json={**req, "reviews": [{**reviews[0], "reason": "too short"}]})
+    assert short.status_code == 422  # under 10 characters
+    assert "unknown" not in memo["subject"] and "not given" not in memo["subject"]
+
+
+def test_briefing_names_the_confirmed_match_not_the_top_hit():
+    req = {**BASE, "company": "Sberbank", "hs": "854231", "intermediary": "KG"}
+    hits = assess(**req)["entity"]["subjects"][0]["matches"]
+    second = hits[1]  # confirm a match that is not the highest-scoring one
+    memo = client.post("/api/memo", json={**req, "reviews": [{"subject": "Sberbank", "match_id": second["id"],
+                                                              "decision": "same", "reason": "Same SWIFT code and register"}]}).json()
+    buyer = next(f["text"] for f in memo["findings"] if f["area"] == "Buyer")
+    assert "confirmed by the officer" in buyer and second["name"] in buyer

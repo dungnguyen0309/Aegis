@@ -5,36 +5,37 @@ import { createPortal } from "react-dom";
 import type { Section } from "@/components/assessment-summary";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { openFold } from "@/components/more";
 import { Panel } from "@/components/panel";
 import { sentenceCase, ToneIcon } from "@/components/status";
-import { entityLabel, type Tone, routeStatus } from "@/lib/format";
+import { entityLabel, routeStatus, severityTone } from "@/lib/format";
 import type { Memo } from "@/lib/types";
 
 /** Display names for the API's finding areas, matching the tab names. */
 const AREA_LABEL: Record<string, string> = { Counterparty: "Buyer", Goods: "Item" };
 
 const SEVERITY_INK: Record<Memo["findings"][number]["severity"], string> = {
-  critical: "#b42318",
-  high: "#c2410c",
-  medium: "#a16207",
-  info: "#57534e",
+  critical: "var(--stop-ink)",
+  high: "var(--edd-ink)",
+  medium: "var(--paper-medium)",
+  info: "var(--paper-info)",
 };
 
 function MemoDocument({ m }: { m: Memo }) {
   return (
-    <article className="bg-white px-8 py-7 font-sans text-[13.5px] leading-[1.55] text-[#151515] print:bg-white print:p-0">
-      <div className="flex items-center justify-between border-b-2 border-[#151515] pb-2 font-mono text-[15px]">
+    <article className="bg-paper px-4 py-5 sm:px-8 sm:py-7 font-sans text-sm leading-relaxed text-paper-ink print:bg-white print:p-0">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 border-b-2 border-paper-ink pb-2 text-sm">
         <span>{m.marking}</span>
         <span>Ref {m.ref} · {m.date}</span>
       </div>
       <h3 className="mt-4 text-xl font-bold">{m.title}</h3>
-      <p className="mt-1 text-[#444]"><b className="text-[#151515]">Subject:</b> {m.subject}</p>
+      <p className="mt-1 text-paper-muted"><b className="text-paper-ink">Subject:</b> {m.subject}</p>
 
-      <div className="mt-4 border px-3 py-2" style={{ borderColor: m.verdict.level >= 3 ? "#b42318" : m.verdict.level === 2 ? "#c2410c" : "#15803d" }}>
-        <div className="font-mono text-[16px] font-bold text-[#444]">Bottom line</div>
+      <div className="mt-4 border px-3 py-2" style={{ borderColor: m.verdict.level >= 3 ? "var(--stop-ink)" : m.verdict.level === 2 ? "var(--edd-ink)" : "var(--ok-ink)" }}>
+        <div className="text-base font-bold text-paper-muted">Bottom line</div>
         <p className="font-semibold">{m.bluf}</p>
-        <p className="mt-1 font-mono text-[14px] text-[#444]">
-          Route risk {m.scores.route}/100 {sentenceCase(routeStatus(m.scores.route_band, m.scores.route_no_baseline).label)} · Sanctions screening {entityLabel[m.scores.entity_status]}{m.scores.entity_status !== "CLEAN" && ` (${m.scores.entity}/100)`}
+        <p className="mt-1 text-sm text-paper-muted">
+          Route risk {m.scores.route}/100 {sentenceCase(routeStatus(m.scores.route_band, m.scores.route_no_baseline).label)} · Sanctions screening {entityLabel[m.scores.entity_status]}{m.scores.entity_status !== "CLEAN" && ` (best similarity ${m.scores.best_similarity.toFixed(0)}%)`}
         </p>
       </div>
 
@@ -49,14 +50,31 @@ function MemoDocument({ m }: { m: Memo }) {
         <h4 className="memo-h">Findings</h4>
         <ul className="space-y-1">
           {m.findings.map((f) => (
-            <li key={f.text} className="flex gap-2">
-              <span className="mt-[3px] w-32 shrink-0 font-mono text-[14px] font-semibold"
+            <li key={f.text} className="flex gap-2 max-sm:flex-col max-sm:gap-0">
+              <span className="mt-0.5 w-32 shrink-0 text-sm font-semibold"
                 style={{ color: SEVERITY_INK[f.severity] }}>{AREA_LABEL[f.area] ?? f.area}</span>
-              <span>{f.text}</span>
+              <span className="min-w-0">{f.text}</span>
             </li>
           ))}
         </ul>
       </section>
+
+      {m.reviews.length > 0 && (
+        <section className="mt-4">
+          <h4 className="memo-h">Match decisions</h4>
+          <ul className="space-y-1">
+            {m.reviews.map((r) => (
+              <li key={r.subject + r.listed_name}>
+                <b>{r.subject}</b> / {r.listed_name} ({r.lists.join(", ")}):{" "}
+                <b>{r.decision === "same" ? "Same entity" : "Not the same entity"}.</b> Reason: {r.reason}
+                {(r.at || r.by) && (
+                  <span className="text-paper-faint"> ({r.at ? `recorded ${new Date(r.at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}` : "recorded"}{r.by ? ` by ${r.by}` : ""})</span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section className="mt-4">
         <h4 className="memo-h">Legal exposure</h4>
@@ -68,12 +86,12 @@ function MemoDocument({ m }: { m: Memo }) {
         <ol className="list-decimal space-y-1 pl-4">{m.edd.map((x) => <li key={x}>{x}</li>)}</ol>
       </section>
 
-      <section className="mt-4 text-[14px] text-[#444]">
+      <section className="mt-4 text-sm text-paper-muted">
         <h4 className="memo-h">Limitations</h4>
         <ul className="list-disc space-y-0.5 pl-4">{m.limitations.map((x) => <li key={x}>{x}</li>)}</ul>
       </section>
 
-      <footer className="mt-4 border-t border-[#ccc] pt-2 font-mono text-[14px] leading-relaxed text-[#666]">
+      <footer className="mt-4 border-t border-paper-rule pt-2 text-sm leading-relaxed text-paper-faint">
         Sources: {m.sources.map((s) => s.label).join(" · ")}
         <br />
         Generated by Aegis ({m.engine === "rules" ? "rule-based engine" : "rule-based engine + language model narrative"}).
@@ -82,15 +100,19 @@ function MemoDocument({ m }: { m: Memo }) {
   );
 }
 
-export function MemoPanel({ memo, loading, error, onGenerate, stale }: {
+export function MemoPanel({ memo, loading, error, onGenerate, stale, onExport }: {
   memo: Memo | null;
   loading: boolean;
   error: string | null;
   onGenerate: () => void;
   stale: boolean;
+  /** Called when the briefing is downloaded: a saved file now holds the decisions on screen. (Printing is not
+   *  counted: a cancelled print dialog cannot be told apart from a printed one.) */
+  onExport?: () => void;
 }) {
   const download = () => {
     if (!memo) return;
+    onExport?.();
     const url = URL.createObjectURL(new Blob([memo.markdown], { type: "text/markdown" }));
     const a = Object.assign(document.createElement("a"), { href: url, download: `${memo.ref}.md` });
     a.click();
@@ -110,7 +132,7 @@ export function MemoPanel({ memo, loading, error, onGenerate, stale }: {
       }
     >
       {memo && !stale ? (
-        <div className="bg-muted p-3 sm:p-5"><div className="mx-auto max-w-[720px] border border-border">
+        <div className="bg-muted p-3 sm:p-5"><div className="mx-auto max-w-150 border border-border">
           <MemoDocument m={memo} />
         </div></div>
       ) : (
@@ -120,7 +142,7 @@ export function MemoPanel({ memo, loading, error, onGenerate, stale }: {
             {loading ? <SpinnerGapIcon className="animate-spin" /> : <FileTextIcon />}
             {loading ? "Drafting briefing…" : "Generate briefing"}
           </Button>
-          {error && <p className="text-[15px] text-destructive">{error}</p>}
+          {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
       )}
       {memo && !stale && typeof document !== "undefined" && createPortal(<div id="memo-print"><MemoDocument m={memo} /></div>, document.body)}
@@ -130,9 +152,9 @@ export function MemoPanel({ memo, loading, error, onGenerate, stale }: {
 
 /** Briefing areas (API names) and the tab that holds their evidence. */
 const AREA_SECTION: Record<string, Section> = { Counterparty: "counterparty", Goods: "goods", Buyer: "counterparty", Item: "goods" };
-const SEVERITY_TONE: Record<Memo["findings"][number]["severity"], Tone> = {
-  critical: "critical", high: "serious", medium: "warning", info: "neutral",
-};
+/** Route findings whose evidence sits in a folded panel, and the fold that holds it. */
+const AREA_FOLD: Record<string, string> = { "Monthly exports": "monthly", "Partner's figures": "mirror", Price: "mirror" };
+const SEVERITY_TONE = severityTone;
 
 /** The briefing's findings, each opening the tab with its evidence. Overview leads with these. */
 export function KeyFindings({ memo, loading, error, onRetry, onSection }: {
@@ -148,22 +170,29 @@ export function KeyFindings({ memo, loading, error, onRetry, onSection }: {
         <ul className="divide-y divide-border">
           {/* One row per area (in order of first, most severe appearance), so repeated areas read as a group */}
           {[...new Set(memo.findings.map((f) => f.area))].map((area) => (
-            <li key={area}>
-              <button type="button" onClick={() => onSection(AREA_SECTION[area] ?? "route")}
-                className="group flex w-full items-start gap-3 px-5 py-2.5 text-left transition-colors hover:bg-muted">
-                <span className="min-w-0 flex-1 text-[16px] leading-snug sm:flex sm:gap-3">
-                  <span className="block font-semibold sm:w-32 sm:shrink-0">{AREA_LABEL[area] ?? area}</span>
-                  <span className="block min-w-0 flex-1 space-y-1">
-                    {memo.findings.filter((f) => f.area === area).map((f) => (
-                      <span key={f.text} className="flex items-start gap-2">
-                        <ToneIcon tone={SEVERITY_TONE[f.severity]} className="mt-[3px] size-4" />
-                        <span>{f.text}</span>
-                      </span>
-                    ))}
-                  </span>
-                </span>
-                <CaretRightIcon className="mt-[3px] size-3.5 shrink-0 opacity-40 group-hover:opacity-100" aria-hidden />
-              </button>
+            // The whole row opens the tab, but only the area name is the button, so screen readers hear a short name
+            <li key={area} className="group relative flex items-start gap-3 px-5 py-2.5 transition-colors hover:bg-muted">
+              <div className="min-w-0 flex-1 text-base leading-snug sm:flex sm:gap-3">
+                <button type="button" onClick={() => {
+                  const target = AREA_SECTION[area] ?? "route";
+                  onSection(target);
+                  // This row unmounts with the tab switch: move focus to the new tab (or the fold) instead of <body>
+                  if (AREA_FOLD[area]) openFold(AREA_FOLD[area]);
+                  else requestAnimationFrame(() => document.getElementById(`tab-${target}`)?.focus({ preventScroll: true }));
+                }}
+                  className="block text-left font-semibold after:absolute after:inset-0 sm:w-32 sm:shrink-0">
+                  {AREA_LABEL[area] ?? area}<span className="sr-only"> (open tab)</span>
+                </button>
+                <ul className="min-w-0 flex-1 space-y-1">
+                  {memo.findings.filter((f) => f.area === area).map((f) => (
+                    <li key={f.text} className="flex items-start gap-2">
+                      <ToneIcon tone={SEVERITY_TONE[f.severity]} className="mt-0.5 size-4" />
+                      <span>{f.text}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <CaretRightIcon className="mt-0.5 size-3.5 shrink-0 opacity-40 group-hover:opacity-100" aria-hidden />
             </li>
           ))}
         </ul>
@@ -174,9 +203,9 @@ export function KeyFindings({ memo, loading, error, onRetry, onSection }: {
         </div>
       ) : (
         <div className="space-y-2 px-5 py-4" role="status"><span className="sr-only">Loading findings…</span>
-          <Skeleton className="h-4 w-3/4 motion-reduce:animate-none" />
-          <Skeleton className="h-4 w-2/3 motion-reduce:animate-none" />
-          <Skeleton className="h-4 w-1/2 motion-reduce:animate-none" />
+          <Skeleton className="h-4 w-3/4" />
+          <Skeleton className="h-4 w-2/3" />
+          <Skeleton className="h-4 w-1/2" />
         </div>
       )}
     </Panel>

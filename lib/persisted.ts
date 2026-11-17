@@ -25,6 +25,22 @@ function subscribe(cb: () => void) {
   };
 }
 
+/** Free text (a name) kept the same way, cut to `max` characters. */
+export function usePersistedText(key: string, max = 80): [string, (v: string) => void] {
+  const value = useSyncExternalStore(subscribe, () => (readRaw(key) ?? "").slice(0, max), () => "");
+  const set = useCallback((v: string) => {
+    const text = v.slice(0, max);
+    memory.set(key, text);
+    try {
+      window.localStorage.setItem(key, text);
+    } catch {
+      /* storage blocked: keep the in-memory value */
+    }
+    listeners.forEach((l) => l());
+  }, [key, max]);
+  return [value, set];
+}
+
 export function usePersisted<T extends string>(key: string, fallback: T, allowed: readonly T[]): [T, (v: T) => void] {
   const value = useSyncExternalStore(
     subscribe,

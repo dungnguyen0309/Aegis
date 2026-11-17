@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import * as THREE from "three";
 import { flagTexture, markTexture, personTexture } from "@/components/three/marks";
 import { Frame3D, ToolButton, type Tip, tipAt, usePicking, useStage } from "@/components/three/frame";
+import { VIEW_H } from "@/components/three/lazy";
 import { StatusBadge } from "@/components/status";
 import { Flag, regionName } from "@/components/visuals";
 import { entityTone, entityLabel } from "@/lib/format";
@@ -37,7 +38,7 @@ function graph(e: Entity, company: string, jurisdiction: string | null) {
     const id = `s:${i}`;
     const isCompany = s.role === "Company";
     add({ id, kind: isCompany ? "company" : "person", label: s.name, size: isCompany ? 0.56 : 0.42, pinned: isCompany, flagged: s.status !== "CLEAN",
-      info: <><div className="text-[14px] text-faint">{isCompany ? "Buyer" : "Owner or director"}</div><div className="font-bold">{s.name}</div>
+      info: <><div className="text-sm text-faint">{isCompany ? "Buyer" : "Owner or director"}</div><div className="font-bold">{s.name}</div>
         <div className="mt-1"><StatusBadge tone={entityTone[s.status]}>{entityLabel[s.status]}{s.status !== "CLEAN" && ` · ${s.best_score.toFixed(0)}%`}</StatusBadge></div></> });
     if (!isCompany) edges.push({ a: "s:0", b: id, kind: "owner" });
     HUBS.forEach((h) => edges.push({ a: id, b: `hub:${h.id}`, kind: "screened" }));
@@ -45,7 +46,7 @@ function graph(e: Entity, company: string, jurisdiction: string | null) {
       const mid = `m:${m.id}`;
       if (!nodes.some((n) => n.id === mid)) {
         add({ id: mid, kind: "match", label: m.name, size: 0.34, flagged: true, url: m.url, individual: m.kind === "P",
-          info: <><div className="text-[14px] text-faint">Listed {m.kind === "P" ? "person" : "organisation"}</div>
+          info: <><div className="text-sm text-faint">Listed {m.kind === "P" ? "person" : "organisation"}</div>
             <div className="font-bold">{m.name}</div>
             <div>{m.lists.join(" · ")}{m.program && ` · ${m.program}`}</div>
             {m.countries.length > 0 && <div className="flex items-center gap-1">{m.countries.map((c) => <Flag key={c} code={c} size={14} />)} {m.countries.map((c) => regionName(c)).join(", ")}</div>}
@@ -102,14 +103,14 @@ function hubTexture(label: string): THREE.CanvasTexture {
   const c = document.createElement("canvas");
   c.width = c.height = 192;
   const ctx = c.getContext("2d")!;
-  ctx.fillStyle = "#2f3e4e";
+  ctx.fillStyle = cssVar("--scene-vehicle");
   ctx.beginPath();
   ctx.arc(96, 96, 90, 0, Math.PI * 2);
   ctx.fill();
-  ctx.strokeStyle = "#a7b1bd";
+  ctx.strokeStyle = cssVar("--scene-steel");
   ctx.lineWidth = 6;
   ctx.stroke();
-  ctx.fillStyle = "#ffffff";
+  ctx.fillStyle = cssVar("--card");
   ctx.font = `700 ${label.length > 2 ? 54 : 68}px ${pageFont()}`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
@@ -226,7 +227,7 @@ export function Network3D({ e, company, jurisdiction }: { e: Entity; company: st
 
   return (
     <div>
-      <Frame3D hostRef={hostRef} stageRef={stageRef} failed={failed} tip={tip} className="h-[360px] bg-card sm:h-[400px]"
+      <Frame3D hostRef={hostRef} stageRef={stageRef} failed={failed} tip={tip} className={`${VIEW_H.network} bg-card`}
         label={`3D connections of ${company}: owners, EU, US and UN lists and ${matches} listed names`}
         hint="Drag to rotate · click a listed name to open its record"
         tools={!reduce && (
@@ -240,14 +241,14 @@ export function Network3D({ e, company, jurisdiction }: { e: Entity; company: st
               <div key={n.id} ref={(el) => {
                 if (el) labelEls.current.set(n.id, el);
                 else labelEls.current.delete(n.id);
-              }} className={`absolute left-0 top-0 max-w-[150px] truncate text-center opacity-0 [text-shadow:0_0_3px_var(--card),0_0_3px_var(--card)] ${n.kind === "match" ? "text-[14px] text-muted-foreground" : "text-[14px] font-bold text-foreground"} ${n.kind === "hub" ? "max-sm:hidden" : ""}`}>
+              }} className={`absolute left-0 top-0 max-w-38 truncate text-center opacity-0 [text-shadow:0_0_3px_var(--card),0_0_3px_var(--card)] ${n.kind === "match" ? "text-sm text-muted-foreground" : "text-sm font-bold text-foreground"} ${n.kind === "hub" ? "max-sm:hidden" : ""}`}>
                 {n.kind === "hub" ? HUBS.find((h) => `hub:${h.id}` === n.id)?.full : n.label}
               </div>
             ))}
           </div>
         } />
-      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[14px] text-muted-foreground">
-        <span className="inline-flex items-center gap-1.5"><span className="h-0.5 w-5" style={{ background: "var(--status-critical)" }} />Match ≥ 93%</span>
+      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+        <span className="inline-flex items-center gap-1.5"><span className="h-0.5 w-5" style={{ background: "var(--status-critical)" }} />Match from 93%</span>
         <span className="inline-flex items-center gap-1.5"><span className="h-0.5 w-5" style={{ background: "var(--status-serious)" }} />Possible match 80–93%</span>
         <span className="inline-flex items-center gap-1.5"><span className="h-0.5 w-5" style={{ background: "var(--chart-baseline)" }} />Weak match, screening or owner link</span>
         <span>Line thickness: similarity</span>

@@ -31,6 +31,19 @@ export interface AssessRequest {
   intermediary: string;
   live: boolean;
   weights?: Weights | null;
+  reviews?: Review[];
+}
+
+/** An officer's decision on one listed match for one screened name; it travels with every request. */
+export interface Review {
+  subject: string;
+  match_id: string;
+  decision: "same" | "different";
+  reason: string;
+  /** When it was recorded (ISO 8601). */
+  at?: string | null;
+  /** Who recorded it, as typed on the Buyer tab. */
+  by?: string | null;
 }
 
 export interface Classification {
@@ -58,19 +71,23 @@ export interface Match {
   listed_since: string;
   jurisdiction_match: boolean;
   url: string;
+  review: { decision: Review["decision"]; reason: string; at?: string | null; by?: string | null } | null;
 }
 
 export interface Entity {
   status: EntityStatus;
   best_score: number;
   score: number;
-  subjects: { name: string; role: string; status: EntityStatus; best_score: number; matches: Match[] }[];
+  /** `confirmed`: the officer marked one of its matches as the same entity. */
+  subjects: { name: string; role: string; status: EntityStatus; best_score: number; confirmed: boolean; matches: Match[] }[];
   source: string;
   lists: string[];
   warning: string | null;
+  /** Names with a match or possible match that nobody has confirmed yet. */
+  unreviewed: number;
 }
 
-export interface Series {
+interface Series {
   years: number[];
   values: number[];
   russia: number[];
@@ -81,7 +98,7 @@ export interface Series {
   warning?: string;
 }
 
-export interface Point {
+interface Point {
   year: number;
   value: number;
   russia: number | null;
@@ -124,13 +141,15 @@ export interface Route {
   threshold: number;
 }
 
-export interface Verdict {
+interface Verdict {
   code: VerdictCode;
   level: number;
   title: string;
   notes: string[];
-  /** Stop steps for a sanctions match; empty otherwise. */
+  /** Steps for a sanctions match or possible match (stop, check the match, escalate, record); empty otherwise. */
   actions: string[];
+  /** The steps among `actions` that the law requires (the Art. 12g clause); these never fold away on phones. */
+  required?: string[];
 }
 
 export interface Assessment {
@@ -202,6 +221,8 @@ export interface RadarCell {
   score: number;
   band: Band;
   multiplier: number | null;
+  /** Under €100k a year before the war: the ratio overstates the change. */
+  small_base: boolean;
   emergent: boolean;
   diversion: boolean;
   latest: number;
@@ -220,7 +241,7 @@ export interface Radar {
   counts: Record<Band, number>;
 }
 
-export interface RegistryRecord {
+interface RegistryRecord {
   lei: string;
   name: string;
   other_names: string[];
@@ -284,8 +305,9 @@ export interface Memo {
   subject: string;
   verdict: Verdict;
   bluf: string;
-  scores: { route: number; route_band: Band; route_no_baseline: boolean; entity: number; entity_status: EntityStatus };
+  scores: { route: number; route_band: Band; route_no_baseline: boolean; entity: number; entity_status: EntityStatus; best_similarity: number };
   findings: { severity: "critical" | "high" | "medium" | "info"; area: string; text: string }[];
+  reviews: { subject: string; listed_name: string; lists: string[]; decision: Review["decision"]; reason: string; at?: string | null; by?: string | null }[];
   legal: string[];
   edd: string[];
   limitations: string[];

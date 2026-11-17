@@ -1,15 +1,13 @@
 "use client";
 
 import { geoGraticule10, geoInterpolate, geoNaturalEarth1, geoPath } from "d3-geo";
-import type { Feature, FeatureCollection, Geometry } from "geojson";
-import { feature } from "topojson-client";
-import type { GeometryCollection, Topology } from "topojson-specification";
-import world from "world-atlas/countries-110m.json";
+import { type KeyboardEvent, useSyncExternalStore } from "react";
 import { regionName } from "@/components/visuals";
-import { CORRIDORS, type Corridor, type CorridorMode, EU27_NUMERIC, LEG_COLOR, INTERMEDIARY_CODES, MARKERS, NUMERIC } from "@/lib/corridors";
+import { CORRIDORS, type Corridor, type CorridorMode, EU27_NUMERIC, LEG_COLOR, INTERMEDIARY_CODES, INTERMEDIARY_IDS, MARKERS, NUMERIC } from "@/lib/corridors";
 import { money } from "@/lib/format";
 import type { Flows } from "@/lib/types";
 import { useReducedMotion } from "@/lib/use-reduced-motion";
+import { COUNTRIES } from "@/lib/world";
 
 /* ---------------- projection and static basemap (computed once) ---------------- */
 
@@ -21,10 +19,16 @@ const projection = geoNaturalEarth1().rotate([-52, 0]).fitWidth(W, EXTENT);
 const path = geoPath(projection);
 const H = Math.ceil(path.bounds(EXTENT)[1][1]);
 
-const topo = world as unknown as Topology<{ countries: GeometryCollection<{ name: string }> }>;
-const COUNTRIES = (feature(topo, topo.objects.countries) as FeatureCollection<Geometry, { name: string }>).features
-  .map((f: Feature<Geometry, { name: string }>) => ({ id: String(f.id), name: f.properties.name, d: path(f) ?? "" }));
+const SHAPES = COUNTRIES.map((f) => ({ id: String(f.id), name: f.properties.name, d: path(f) ?? "" }));
 const GRATICULE = path(geoGraticule10()) ?? "";
+
+// Touch screens get a row of country buttons under the map: the flags there are too small to tap
+const NO_HOVER = "(hover: none)";
+const subscribeHover = (onChange: () => void) => {
+  const m = window.matchMedia(NO_HOVER);
+  m.addEventListener("change", onChange);
+  return () => m.removeEventListener("change", onChange);
+};
 
 const project = (p: Pt): Pt => {
   const xy = projection(p) ?? [0, 0];
@@ -44,7 +48,6 @@ function smooth(p: Pt[]): string {
 }
 
 const RUSSIA_LABEL = project([92, 61]);
-const INTERMEDIARY_IDS = new Set(INTERMEDIARY_CODES.map((k) => NUMERIC[k]));
 
 const ROUTES = CORRIDORS.map((c) => {
   const geo: Pt[] = c.mode === "air"
@@ -86,34 +89,34 @@ function MiniVehicle({ mode, color }: { mode: CorridorMode; color: string }) {
   if (mode === "sea") {
     return (
       <g>
-        <rect x={-6} y={-6} width={4} height={3.2} fill="#eb6834" /><rect x={-1.6} y={-6} width={4} height={3.2} fill="#2a78d6" />
-        <rect x={2.8} y={-8} width={3} height={5} fill="#eef1f4" stroke="#475569" strokeWidth={0.4} />
-        <path d="M-9 -3 H9.5 L7 2 H-7 Z" fill="#1f3a5f" stroke="#fff" strokeWidth={0.5} />
+        <rect x={-6} y={-6} width={4} height={3.2} fill="var(--series-2)" /><rect x={-1.6} y={-6} width={4} height={3.2} fill="var(--series-1)" />
+        <rect x={2.8} y={-8} width={3} height={5} fill="var(--scene-wall)" stroke="var(--scene-steel)" strokeWidth={0.4} />
+        <path d="M-9 -3 H9.5 L7 2 H-7 Z" fill="var(--scene-vehicle)" stroke="var(--card)" strokeWidth={0.5} />
       </g>
     );
   }
   if (mode === "rail") {
     return (
-      <g stroke="#fff" strokeWidth={0.5}>
+      <g stroke="var(--card)" strokeWidth={0.5}>
         <rect x={-11} y={-5} width={9} height={5} rx={0.8} fill={color} />
-        <path d="M-1 -5 H6 L9 -2 V0 H-1 Z" fill="#2f3e4e" />
-        <circle cx={-8} cy={1} r={1.4} fill="#1f2933" /><circle cx={-4} cy={1} r={1.4} fill="#1f2933" />
-        <circle cx={2} cy={1} r={1.4} fill="#1f2933" /><circle cx={6} cy={1} r={1.4} fill="#1f2933" />
+        <path d="M-1 -5 H6 L9 -2 V0 H-1 Z" fill="var(--scene-vehicle)" />
+        <circle cx={-8} cy={1} r={1.4} fill="var(--scene-tyre)" /><circle cx={-4} cy={1} r={1.4} fill="var(--scene-tyre)" />
+        <circle cx={2} cy={1} r={1.4} fill="var(--scene-tyre)" /><circle cx={6} cy={1} r={1.4} fill="var(--scene-tyre)" />
       </g>
     );
   }
   if (mode === "road") {
     return (
-      <g stroke="#fff" strokeWidth={0.5}>
+      <g stroke="var(--card)" strokeWidth={0.5}>
         <rect x={-9} y={-6} width={11} height={5.5} rx={0.6} fill={color} />
-        <path d="M2.5 -4.5 H6.5 L9 -2 V-0.5 H2.5 Z" fill="#2f3e4e" />
-        <circle cx={-6} cy={0.4} r={1.4} fill="#1f2933" /><circle cx={5.5} cy={0.4} r={1.4} fill="#1f2933" />
+        <path d="M2.5 -4.5 H6.5 L9 -2 V-0.5 H2.5 Z" fill="var(--scene-vehicle)" />
+        <circle cx={-6} cy={0.4} r={1.4} fill="var(--scene-tyre)" /><circle cx={5.5} cy={0.4} r={1.4} fill="var(--scene-tyre)" />
       </g>
     );
   }
   return (
     <path d="M-9 0 L6 -0.8 C9 -0.8 10 0 10 0.4 C10 0.8 9 1.4 6 1.4 L-9 0.8 Z M-1 -0.4 L-5 -6 L-3 -6 L3 -0.4 Z M-1 1 L-5 6.5 L-3 6.5 L3 1 Z M-8 0 L-10.5 -3.5 L-8.8 -3.5 L-6.5 0 Z"
-      fill="#2f3e4e" stroke="#fff" strokeWidth={0.4} />
+      fill="var(--scene-vehicle)" stroke="var(--card)" strokeWidth={0.4} />
   );
 }
 
@@ -145,7 +148,7 @@ function directPath(exporter: string): string | null {
   return smooth(pts);
 }
 
-export function CorridorMap({ exporter, exporterName, intermediary, intermediaryName, onSelect, flows, yi, hover }: {
+export function CorridorMap({ exporter, exporterName, intermediary, intermediaryName, onSelect, flows, yi, hover, playing }: {
   exporter: string;
   exporterName: string;
   intermediary: string;
@@ -156,8 +159,11 @@ export function CorridorMap({ exporter, exporterName, intermediary, intermediary
   yi: number;
   /** Corridor id highlighted from the list. */
   hover: string | null;
+  /** Vehicles move along the routes (off when paused or with reduced motion). */
+  playing: boolean;
 }) {
   const reduce = useReducedMotion();
+  const touch = useSyncExternalStore(subscribeHover, () => window.matchMedia(NO_HOVER).matches, () => false);
   const years = flows?.years ?? [];
 
   const peak = flows ? Math.max(1, ...Object.values(flows.partners).flat()) : 1;
@@ -192,17 +198,18 @@ export function CorridorMap({ exporter, exporterName, intermediary, intermediary
   return (
     <div>
       <div className="overflow-hidden rounded-sm border border-border">
-        <svg viewBox={`0 0 ${W} ${H}`} className="block w-full" role="img"
+        <svg viewBox={`0 0 ${W} ${H}`} className="block w-full" role={touch ? "img" : "group"}
           aria-label={`Map of freight corridors from ${exporterName} to ${intermediaryName} and on to Russia`}>
           <rect width={W} height={H} fill="var(--map-ocean)" />
           <path d={GRATICULE} fill="none" stroke="var(--map-grat)" strokeWidth={0.6} />
           <g stroke="var(--map-border)" strokeWidth={0.6}>
-            {COUNTRIES.map((c) => <path key={c.id + c.name} d={c.d} fill={fillFor(c.id)}><title>{c.name}</title></path>)}
+            {SHAPES.map((c) => <path key={c.id + c.name} d={c.d} fill={fillFor(c.id)}><title>{c.name}</title></path>)}
           </g>
           <text x={RUSSIA_LABEL[0]} y={RUSSIA_LABEL[1]} textAnchor="middle" fontSize={22}
-            fontWeight={700} letterSpacing={9} fill="var(--map-russia-text)" opacity={0.6}>RUSSIA</text>
+            fontWeight={700} fill="var(--map-russia-text)">Russia</text>
           {flows && (
-            <text x={18} y={H - 18} fontSize={44} fontWeight={700} fill="var(--map-label)" opacity={0.18}>{years[yi]}</text>
+            // Watermark only: the year is also shown, at full contrast, beside the timeline control
+            <text x={18} y={H - 18} fontSize={44} fontWeight={700} fill="var(--map-label)" opacity={0.18} aria-hidden>{years[yi]}</text>
           )}
 
           {ROUTES.filter((r) => !active(r)).map((r) => (
@@ -221,12 +228,12 @@ export function CorridorMap({ exporter, exporterName, intermediary, intermediary
             return (
               <g key={r.id} transform={`translate(${x},${y})`}>
                 <circle r={7} fill="var(--card)" stroke={LEG_COLOR.restricted} strokeWidth={1.5} />
-                <path d="M-3 -3 L3 3 M3 -3 L-3 3" stroke="#d03b3b" strokeWidth={1.8} strokeLinecap="round" />
+                <path d="M-3 -3 L3 3 M3 -3 L-3 3" stroke="var(--status-critical)" strokeWidth={1.8} strokeLinecap="round" />
               </g>
             );
           })}
 
-          {!reduce && activeRoutes.filter((r) => r.leg !== "restricted").map((r) => (
+          {!reduce && playing && activeRoutes.filter((r) => r.leg !== "restricted").map((r) => (
             <Moving key={r.id} r={r} flip={r.leg === "onward"} />
           ))}
 
@@ -248,11 +255,12 @@ export function CorridorMap({ exporter, exporterName, intermediary, intermediary
             const x = x0 + (m.offset?.[0] ?? 0) - w / 2;
             const y = y0 + (m.offset?.[1] ?? 0) - h / 2;
             return (
-              <g key={code} className="cursor-pointer" onClick={() => onSelect(code)} role="button" tabIndex={0}
-                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelect(code); } }}
-                aria-label={`Assess ${regionName(code)}`}>
-                <title>{`Assess ${regionName(code)}`}</title>
-                <rect x={x - 1.5} y={y - 1.5} width={w + 3} height={h + 3} rx={2} fill="#fff"
+              <g key={code} {...(touch ? { className: "pointer-events-none" } : {
+                className: "cursor-pointer", onClick: () => onSelect(code), role: "button", tabIndex: 0, "aria-label": `Assess ${regionName(code)}`,
+                onKeyDown: (e: KeyboardEvent) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelect(code); } },
+              })}>
+                {!touch && <title>{`Assess ${regionName(code)}`}</title>}
+                <rect x={x - 1.5} y={y - 1.5} width={w + 3} height={h + 3} rx={2} fill="var(--card)"
                   stroke={isActive ? "var(--foreground)" : "var(--chart-axis)"} strokeWidth={isActive ? 1.4 : 0.8} />
                 <image href={`/flags/${code.toLowerCase()}.svg`} x={x} y={y} width={w} height={h} preserveAspectRatio="none" />
                 {isActive && (
@@ -270,7 +278,7 @@ export function CorridorMap({ exporter, exporterName, intermediary, intermediary
             const w = 22, h = 16.5;
             return (
               <g key={code}>
-                <rect x={x0 - w / 2 - 1.5} y={y0 - h / 2 - 1.5} width={w + 3} height={h + 3} rx={2} fill="#fff" stroke="var(--foreground)" strokeWidth={1.2} />
+                <rect x={x0 - w / 2 - 1.5} y={y0 - h / 2 - 1.5} width={w + 3} height={h + 3} rx={2} fill="var(--card)" stroke="var(--foreground)" strokeWidth={1.2} />
                 <image href={`/flags/${code.startsWith("EU") ? "eu" : code.toLowerCase()}.svg`} x={x0 - w / 2} y={y0 - h / 2}
                   width={w} height={h} preserveAspectRatio="none" />
                 <text x={x0} y={y0 - h / 2 - 6} textAnchor="middle" fontSize={12} fontWeight={700} fill="var(--map-label)"

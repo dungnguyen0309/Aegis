@@ -1,27 +1,22 @@
 "use client";
 
 import { geoDistance, geoEquirectangular, geoGraticule10, geoInterpolate, geoPath } from "d3-geo";
-import type { FeatureCollection, Geometry } from "geojson";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import * as THREE from "three";
-import { feature } from "topojson-client";
-import type { GeometryCollection, Topology } from "topojson-specification";
-import world from "world-atlas/countries-110m.json";
 import { Frame3D, type Tip, tipAt, usePicking, useStage } from "@/components/three/frame";
+import { VIEW_H } from "@/components/three/lazy";
 import { Flag, regionName } from "@/components/visuals";
-import { CORRIDORS, type Corridor, type CorridorMode, EU27_NUMERIC, INTERMEDIARY_CODES, LEG_COLOR, MARKERS, NUMERIC } from "@/lib/corridors";
+import { CORRIDORS, type Corridor, type CorridorMode, EU27_NUMERIC, INTERMEDIARY_CODES, INTERMEDIARY_IDS, LEG_COLOR, MARKERS, NUMERIC } from "@/lib/corridors";
 import { money } from "@/lib/format";
 import { useTheme } from "@/lib/theme";
-import { canvasTexture, cssVar, disposeTree, flagSrc, loadImage, pageFont, type Stage } from "@/lib/three-stage";
+import { canvasTexture, cssVar, disposeTree, flagSrc, loadImage, pageFont, type Stage, themeColor } from "@/lib/three-stage";
 import type { Flows } from "@/lib/types";
+import { COUNTRIES } from "@/lib/world";
 
 type Pt = [number, number];
 const DEG = Math.PI / 180;
 const SURFACE = 1.004;
 
-const topo = world as unknown as Topology<{ countries: GeometryCollection<{ name: string }> }>;
-const COUNTRIES = (feature(topo, topo.objects.countries) as FeatureCollection<Geometry, { name: string }>).features;
-const INTERMEDIARY_IDS = new Set(INTERMEDIARY_CODES.map((k) => NUMERIC[k]));
 
 /** Longitude/latitude to a point on a sphere, matching three.js sphere UVs (equirectangular). */
 function lonLat([lon, lat]: Pt, r = 1): THREE.Vector3 {
@@ -119,16 +114,15 @@ function globeTexture(fill: (id: string) => string): THREE.CanvasTexture {
   ctx.lineWidth = 2.2;
   ctx.lineJoin = "round";
   ctx.stroke();
-  // "RUSSIA", stretched so it reads at normal proportions at 62°N on the sphere
+  // "Russia", stretched so it reads at normal proportions at 62°N on the sphere
   ctx.save();
   ctx.translate(((92 + 180) / 360) * W, ((90 - 62) / 180) * H);
   ctx.scale(1 / Math.cos(62 * DEG), 1);
   ctx.font = `700 60px ${pageFont()}`;
-  ctx.letterSpacing = "22px";
   ctx.textAlign = "center";
   ctx.globalAlpha = 0.75;
   ctx.fillStyle = cssVar("--map-russia-text");
-  ctx.fillText("RUSSIA", 0, 0);
+  ctx.fillText("Russia", 0, 0);
   ctx.restore();
   return canvasTexture(c);
 }
@@ -160,6 +154,7 @@ const HIT = new THREE.Vector3();
 const RADIUS: Record<CorridorMode, number> = { sea: 0.0042, rail: 0.0046, road: 0.0038, air: 0.0034 };
 const SPEED: Record<CorridorMode, number> = { sea: 0.055, rail: 0.065, road: 0.06, air: 0.15 };
 const MODE_NAME: Record<CorridorMode, string> = { sea: "Sea freight", rail: "Rail", road: "Road", air: "Air cargo" };
+const legColor = (leg: Corridor["leg"]) => themeColor(LEG_COLOR[leg].slice(4, -1));
 
 /** Named stops on the corridors serving this intermediary (Moscow has its own label). */
 function stopsFor(intermediary: string): Map<string, Pt> {
@@ -197,7 +192,7 @@ type Pick =
   | { kind: "stop"; name: string }
   | { kind: "direct" };
 
-export function Globe3D({ exporter, exporterName, intermediary, intermediaryName, onSelect, flows, yi, hover }: {
+export function Globe3D({ exporter, exporterName, intermediary, intermediaryName, onSelect, flows, yi, hover, playing }: {
   exporter: string;
   exporterName: string;
   intermediary: string;
@@ -206,6 +201,8 @@ export function Globe3D({ exporter, exporterName, intermediary, intermediaryName
   flows: Flows | null;
   yi: number;
   hover: string | null;
+  /** Shipments move along the routes (off when paused or with reduced motion). */
+  playing: boolean;
 }) {
   const { hostRef, stageRef, ready, failed, reduce } = useStage({ position: [0, 0.9, 2.6], minDistance: 1.35, maxDistance: 4.2 });
   const { theme } = useTheme();
@@ -215,6 +212,7 @@ export function Globe3D({ exporter, exporterName, intermediary, intermediaryName
   const flowPicks = useRef<{ points: THREE.Vector3[]; pick: Pick }[]>([]);
   const routeMeshes = useRef(new Map<string, THREE.Object3D>());
   const directArc = useRef<THREE.Object3D | null>(null);
+  const animateRef = useRef<((t: number, dt: number) => void) | null>(null);
   const labelEls = useRef(new Map<string, HTMLDivElement>());
   const flownTo = useRef<string | null>(null);
 
@@ -302,14 +300,14 @@ export function Globe3D({ exporter, exporterName, intermediary, intermediaryName
     const shipments: { mesh: THREE.Mesh; curve: THREE.CatmullRomCurve3; speed: number; phase: number }[] = [];
     const boxGeo = new THREE.BoxGeometry(0.008, 0.008, 0.02);
     const planeGeo = new THREE.ConeGeometry(0.006, 0.024, 4).rotateX(Math.PI / 2);
-    const shipMat = new THREE.MeshBasicMaterial({ color: "#f5b83d" });
+    const shipMat = new THREE.MeshBasicMaterial({ color: themeColor("--status-warning") });
     g.add(new THREE.Mesh(boxGeo, shipMat), new THREE.Mesh(planeGeo, shipMat)); // owned by the group for disposal
     g.children.forEach((c) => (c.visible = false));
 
     for (const c of CORRIDORS) {
       const active = c.serves.includes(intermediary);
       const mat = new THREE.MeshBasicMaterial({
-        color: LEG_COLOR[c.leg], transparent: true,
+        color: legColor(c.leg), transparent: true,
         opacity: active ? (c.leg === "restricted" ? 0.75 : 1) : hasFlows && c.leg === "inbound" ? 0.45 : 0.28,
       });
       const pts = pointsFor(c.id, c.path, c.mode === "air" ? 0.2 : 0);
@@ -333,7 +331,7 @@ export function Globe3D({ exporter, exporterName, intermediary, intermediaryName
     directArc.current = null;
     if (hasFlows && from) {
       const pts = pointsFor(`direct:${exporter}`, [from, MARKERS.RU.at], 0.5);
-      const obj = tube(pts, 0.0012, new THREE.MeshBasicMaterial({ color: LEG_COLOR.onward, transparent: true, opacity: 0.9 }), true);
+      const obj = tube(pts, 0.0012, new THREE.MeshBasicMaterial({ color: legColor("onward"), transparent: true, opacity: 0.9 }), true);
       g.add(obj);
       directArc.current = obj;
       picks.push({ points: pts, pick: { kind: "direct" } });
@@ -350,8 +348,9 @@ export function Globe3D({ exporter, exporterName, intermediary, intermediaryName
       }
     };
     place(0);
-    const animate = (t: number) => place(t);
-    if (!reduce && shipments.length) stage.frame.add(animate);
+    let clock = 0; // own clock: a paused animation resumes where it stopped
+    const animate = (_t: number, dt: number) => place((clock += dt));
+    animateRef.current = shipments.length ? animate : null;
 
     const hide = stage.reveal(g);
     routeMeshes.current = meshes;
@@ -359,13 +358,21 @@ export function Globe3D({ exporter, exporterName, intermediary, intermediaryName
     stage.invalidate();
     return () => {
       stage.frame.delete(animate);
+      animateRef.current = null;
       hide();
       disposeTree(g);
       routeMeshes.current = new Map();
       flowPicks.current = [];
       directArc.current = null;
     };
-  }, [ready, stageRef, exporter, intermediary, hasFlows, reduce, theme]);
+  }, [ready, stageRef, exporter, intermediary, hasFlows, theme]);
+
+  useEffect(() => {
+    const stage = stageRef.current, animate = animateRef.current;
+    if (!ready || !stage || !animate || reduce || !playing) return;
+    stage.frame.add(animate);
+    return () => void stage.frame.delete(animate);
+  }, [ready, stageRef, exporter, intermediary, hasFlows, theme, reduce, playing]);
 
   /* ---------- time-lapse: line widths follow the year's export volumes (no rebuild) ---------- */
   useEffect(() => {
@@ -394,7 +401,7 @@ export function Globe3D({ exporter, exporterName, intermediary, intermediaryName
     routeMeshes.current.forEach((o, id) => o.scale.setScalar(id === hover ? 1.012 : 1));
     routeMeshes.current.forEach((o, id) => o.traverse((m) => {
       const mat = (m as THREE.Mesh).material as THREE.MeshBasicMaterial | undefined;
-      if (mat && "color" in mat) mat.color.set(id === hover ? "#f5b83d" : LEG_COLOR[CORRIDORS.find((c) => c.id === id)!.leg]);
+      if (mat && "color" in mat) mat.color.set(id === hover ? themeColor("--status-warning") : legColor(CORRIDORS.find((c) => c.id === id)!.leg));
     }));
     stage.invalidate();
   }, [hover, stageRef, ready, yi, intermediary]);
@@ -447,7 +454,7 @@ export function Globe3D({ exporter, exporterName, intermediary, intermediaryName
       return (
         <>
           <div className="font-bold">{p.corridor.name}</div>
-          <div className="text-muted-foreground">{MODE_NAME[p.corridor.mode]} · {p.corridor.leg === "restricted" ? "restricted since 2022" : p.corridor.leg === "inbound" ? "EU → transit country" : "onward to Russia"}</div>
+          <div className="text-muted-foreground">{MODE_NAME[p.corridor.mode]} · {p.corridor.leg === "restricted" ? "restricted since 2022" : p.corridor.leg === "inbound" ? "EU to transit country" : "onward to Russia"}</div>
           <div className="mt-1">{p.corridor.note}</div>
         </>
       );
@@ -497,7 +504,7 @@ export function Globe3D({ exporter, exporterName, intermediary, intermediaryName
   });
 
   return (
-    <Frame3D hostRef={hostRef} stageRef={stageRef} failed={failed} tip={tip} className="h-[380px] bg-card sm:h-[520px]"
+    <Frame3D hostRef={hostRef} stageRef={stageRef} failed={failed} tip={tip} className={`${VIEW_H.globe} bg-card`}
       label={`3D globe of freight corridors from ${exporterName} to ${intermediaryName} and on to Russia`}
       overlay={
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -507,12 +514,12 @@ export function Globe3D({ exporter, exporterName, intermediary, intermediaryName
               else labelEls.current.delete(l.id);
             }}
               className={l.strong
-                ? "absolute left-0 top-0 whitespace-nowrap text-[17px] font-bold text-[var(--map-label)] opacity-0 transition-opacity duration-200 [text-shadow:0_0_3px_var(--map-halo),0_0_3px_var(--map-halo),0_0_2px_var(--map-halo)]"
-                : "absolute left-0 top-0 whitespace-nowrap text-[14px] text-[var(--map-label)] opacity-0 transition-opacity duration-200 [text-shadow:0_0_3px_var(--map-halo),0_0_2px_var(--map-halo)]"}>
+                ? "absolute left-0 top-0 whitespace-nowrap text-base font-bold text-map-label opacity-0 transition-opacity duration-200 [text-shadow:0_0_3px_var(--map-halo),0_0_3px_var(--map-halo),0_0_2px_var(--map-halo)]"
+                : "absolute left-0 top-0 whitespace-nowrap text-sm text-map-label opacity-0 transition-opacity duration-200 [text-shadow:0_0_3px_var(--map-halo),0_0_2px_var(--map-halo)]"}>
               {l.text}
             </div>
           ))}
-          {flows && <div className="absolute bottom-7 left-3 text-[40px] font-bold leading-none text-[var(--map-label)] opacity-20 tabular">{flows.years[yi]}</div>}
+          {flows && <div className="absolute bottom-7 left-3 text-3xl font-bold leading-none text-map-label opacity-20">{flows.years[yi]}</div>}
         </div>
       } />
   );

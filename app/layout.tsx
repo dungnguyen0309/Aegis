@@ -1,15 +1,15 @@
 import type { Metadata, Viewport } from "next";
-import { EB_Garamond } from "next/font/google";
-import { TooltipProvider } from "@/components/ui/tooltip";
+import { Instrument_Sans } from "next/font/google";
 import { THEME_SCRIPT, ThemeProvider } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 import "./globals.css";
 
-// Variable font (400-800): running text in Regular, every heading type in Bold.
-// Cyrillic and Latin Extended cover buyer names such as "ООО Радиоавтоматика" and "Türkiye".
-const garamond = EB_Garamond({ subsets: ["latin", "latin-ext", "cyrillic"], variable: "--font-garamond" });
+// Variable font (400-700): running text in Regular, headings and the verdict in Bold.
+// Latin Extended covers names such as "Türkiye"; it has no Cyrillic, so names such as "ООО Радиоавтоматика"
+// fall back to the size-matched system face next/font adds.
+const instrument = Instrument_Sans({ subsets: ["latin", "latin-ext"], variable: "--font-instrument", display: "swap" });
 
-const TITLE = "Aegis · Open-Source Trade Intelligence & Dual-Use Sanctions Radar";
+const TITLE = "Aegis · Export sanctions and route screening";
 const DESCRIPTION =
   "Screens buyers against sanctions lists and flags unusual EU exports of battlefield items through third countries.";
 // Absolute URLs for the share image: the deployment's own address on Vercel, localhost otherwise
@@ -25,19 +25,22 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#ffffff",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#0d1014" },
+  ],
   colorScheme: "light dark",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={cn("h-full antialiased", garamond.variable)} suppressHydrationWarning>
+    <html lang="en" className={cn("h-full antialiased", instrument.variable)} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
       <body className="min-h-full">
         <ThemeProvider>
-          <TooltipProvider delayDuration={150}>{children}</TooltipProvider>
+          {children}
         </ThemeProvider>
       </body>
     </html>

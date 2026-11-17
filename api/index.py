@@ -33,7 +33,7 @@ def _valid_hs(v: str) -> str:
     if not hs_codes.HS_PATTERN.match(code):
         raise ValueError("Enter a six-digit HS code.")
     if not hs_codes.real_chapter(code):
-        raise ValueError("Not a valid HS code: chapters run from 01 to 97")
+        raise ValueError(f"Not a valid HS code: {code[:2]} is not an HS chapter. Chapters run 01–97, and 77 is unused.")
     return code
 
 
@@ -62,6 +62,25 @@ def _valid_weights(v: dict[str, float] | None) -> dict[str, float] | None:
     return v
 
 
+class Review(BaseModel):
+    """An officer's decision on one listed match for one screened name."""
+
+    subject: str = Field(max_length=200)
+    match_id: str = Field(max_length=200)
+    decision: Literal["same", "different"]
+    reason: str = Field(max_length=300)
+    at: str | None = Field(default=None, max_length=40, description="When the officer recorded it (ISO 8601)")
+    by: str | None = Field(default=None, max_length=80, description="Who recorded it")
+
+    @field_validator("reason")
+    @classmethod
+    def _reason(cls, v: str) -> str:
+        v = v.strip()
+        if len(v) < 10:
+            raise ValueError("Give a reason of at least 10 characters for the decision.")
+        return v
+
+
 class AssessRequest(BaseModel):
     company: str = Field(min_length=2, max_length=200, examples=["Tech Alliance LLC"])
     jurisdiction: str | None = Field(default=None, examples=["KG"])
@@ -71,6 +90,8 @@ class AssessRequest(BaseModel):
     intermediary: str = Field(examples=["KG"])
     live: bool = False
     weights: dict[str, float] | None = Field(default=None, description="Route risk weights; rescaled to 100")
+    # A buyer and 10 owners, up to 8 listed hits each
+    reviews: list[Review] = Field(default_factory=list, max_length=100)
 
     @field_validator("company")
     @classmethod
@@ -155,12 +176,13 @@ async def _assess(req: AssessRequest) -> dict:
         trade.get_series(req.exporter, req.intermediary, req.hs, req.live),
         trade.get_monthly(req.exporter, req.intermediary, req.hs, req.live),
     )
+    entity = sanctions.apply_reviews(entity, [r.model_dump() for r in req.reviews])
     route = anomaly.analyse(series, classification, req.intermediary, req.weights)
     query = {
         **req.model_dump(),
         "exporter_name": config.EXPORTERS[req.exporter]["name"],
         "intermediary_name": config.INTERMEDIARIES[req.intermediary]["name"],
-        "jurisdiction_name": config.JURISDICTIONS.get(req.jurisdiction or "", req.jurisdiction or "unknown"),
+        "jurisdiction_name": config.JURISDICTIONS.get(req.jurisdiction or "", req.jurisdiction or "country not given"),
     }
     return {
         "query": query,
@@ -337,7 +359,9 @@ async def batch(req: BatchRequest) -> dict:
             elif not inter:
                 issues.append("No transit country; route not checked.")
             elif inter not in config.INTERMEDIARIES:
-                issues.append(f"'{inter[:12]}' is not a covered transit country; route not checked.")
+                name = config.JURISDICTIONS.get(inter, inter[:12])
+                issues.append(f"{name} is not a covered transit country. Add one in the intermediary column "
+                              f"({', '.join(config.INTERMEDIARIES)}); route not checked.")
             else:
                 issues.append(f"No trade data for this item to {inter}; route not checked.")
         else:

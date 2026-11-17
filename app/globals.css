@@ -7,9 +7,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-garamond);
-  --font-mono: var(--font-garamond);
-  --font-heading: var(--font-garamond);
+  --font-sans: var(--font-instrument);
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
@@ -32,16 +30,44 @@
   --color-critical: var(--status-critical);
   --color-series-1: var(--series-1);
   --color-series-2: var(--series-2);
+  --color-map-label: var(--map-label);
   --color-faint: var(--faint-foreground);
   --color-warning-ink: var(--warning-ink);
-  --text-xs: 0.875rem;
+  /* The briefing is printed paper: white with dark ink in both themes */
+  --color-paper: var(--paper);
+  --color-paper-ink: var(--paper-ink);
+  --color-paper-muted: var(--paper-muted);
+  --color-paper-faint: var(--paper-faint);
+  --color-paper-rule: var(--paper-rule);
+  /* One type scale, in rem so it follows the reader's text size: meta 13, small 14, body 16, subhead 18,
+     section 22, then two display steps for the verdict */
+  --text-xs: 0.8125rem;
   --text-xs--line-height: 1.4;
-  --text-sm: 0.9375rem;
+  --text-sm: 0.875rem;
   --text-sm--line-height: 1.45;
+  --text-base: 1rem;
+  --text-base--line-height: 1.5;
+  --text-lg: 1.125rem;
+  --text-lg--line-height: 1.35;
+  --text-xl: 1.375rem;
+  --text-xl--line-height: 1.25;
+  --text-2xl: 1.625rem;
+  --text-2xl--line-height: 1.2;
+  --text-3xl: 2rem;
+  --text-3xl--line-height: 1.15;
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) * 1.4);
+}
+
+/* Layout: page width and the sticky header height (sticky panels and scroll targets sit below it).
+   Static, so the variables exist for the CSS below as well as for the utilities. */
+@theme static {
+  --container-app: 90rem;
+  --spacing-header: 4.5rem;
+  --spacing-tabs: 3.25rem; /* the assessment's sticky section tabs */
+  --z-index-tour: 51;
 }
 
 /* Light theme on a white page. */
@@ -65,7 +91,8 @@
   --accent-foreground: #111318;
   --destructive: #c42b2b;
   --border: #e4e7eb;
-  --input: #d5d9df;
+  /* Field outlines: 3:1 against the page (WCAG 1.4.11); --border stays light for dividers */
+  --input: #878d96;
   --ring: #2a78d6;
   --radius: 0.375rem;
   --warning-ink: #8a5a00;
@@ -75,11 +102,28 @@
   --status-warning: #fab219;
   --status-serious: #ec835a;
   --status-critical: #d03b3b;
+  /* Ink on solid status badges: white on the critical red (4.8:1), dark on the lighter tones */
+  --on-critical: #ffffff;
+  --on-serious: #111111;
+
+  /* Briefing paper (not themed: it stays white, as printed) */
+  --paper: #ffffff;
+  --paper-ink: #151515;
+  --paper-muted: #444444;
+  --paper-faint: #666666;
+  --paper-rule: #cccccc;
+  --paper-medium: #a16207;
+  --paper-info: #57534e;
+  --stop-ink: #b42318;
+  --edd-ink: #c2410c;
+  --ok-ink: #15803d;
 
   /* chart roles (validated on the white surface) */
   --series-1: #2a78d6;
   --series-2: #eb6834;
-  --series-3: #1baf7a;
+  /* Data intensity (heatmap) in the accent family: alarm red is kept for Stop */
+  --heat: #1f3f8f;
+  --series-3: #169a6c;
   --chart-baseline: #8f959e;
   --chart-grid: #eef0f2;
   --chart-axis: #c9cdd3;
@@ -87,6 +131,44 @@
   /* illustrations and map */
   --scene-sky-top: #f7fafd;
   --scene-sky-bottom: #ffffff;
+  /* Buildings in the route illustration; other shades are mixed from these */
+  --scene-wall: #f7f9fb;
+  --scene-wall-l: #e7ebf0;
+  --scene-wall-r: #ccd4dd;
+  --scene-glass: #a9c8ea;
+  --scene-steel: #6b7684;
+  --scene-warm: #c9bdb4;
+  --scene-vehicle: #2f3e4e;
+  --scene-tyre: #1f2933;
+  --scene-smoke: #d6dce3;
+  --scene-cargo: #c99a5d;
+  --scene-roof: #9b4a42;
+  --scene-hull: #1f3a5f;
+  --scene-body: #eef1f4;
+  --scene-road: #5b6573;
+  --scene-mark: #ffffff;
+  /* Product drawings */
+  --art-body: #465a70;
+  --art-metal: #a7b1bd;
+  --art-metal-d: #7d8896;
+  --art-glass: #7aa1cc;
+  --art-race: #e3e7ec;
+  --art-glint: #e8f1fb;
+  --art-wafer: #c9d4e2;
+  --art-wafer-edge: #aebccd;
+  --art-die: #7d8fb0;
+  --art-copper: #c27c3a;
+  --art-pcb: #2f8f5b;
+  --art-led: #7fe0a0;
+  --art-solder: #e8c27a;
+  --art-screen: #0f2a1e;
+  --art-crate: #c79a5b;
+  --art-crate-edge: #a87a3f;
+  /* Shipping container colours beyond the two chart series */
+  --cargo-3: #0f766e;
+  --cargo-4: #b45309;
+  --cargo-5: #6250d6;
+  --cargo-6: #475569;
   --map-ocean: #eef5fc;
   --map-grat: #dde8f4;
   --map-land: #e5e8ec;
@@ -98,7 +180,7 @@
   --map-border: #ffffff;
   --map-label: #2b3440;
   --map-halo: #ffffff;
-  --map-russia-text: #c98f8f;
+  --map-russia-text: #9a5555;
 }
 
 /* Dark theme (toggle in the header) */
@@ -122,17 +204,53 @@
   --accent-foreground: #e7e9ec;
   --destructive: #f07070;
   --border: #2a2e35; /* white at 10% on the card, made opaque */
-  --input: #393d44;
+  --input: #6b7380;
   --ring: #3987e5;
   --warning-ink: #f2c14e;
   --series-1: #3987e5;
   --series-2: #d95926;
+  --heat: #6d8fe0;
   --series-3: #199e70;
   --chart-baseline: #6b7380;
   --chart-grid: #232933;
   --chart-axis: #3a4250;
   --scene-sky-top: #18202b;
   --scene-sky-bottom: #141820;
+  --scene-wall: #2a323d;
+  --scene-wall-l: #232a34;
+  --scene-wall-r: #1b2129;
+  --scene-glass: #2d5590;
+  --scene-steel: #8a95a3;
+  --scene-warm: #4a4039;
+  --scene-vehicle: #9aa5b1;
+  --scene-tyre: #c9d0d8;
+  --scene-smoke: #4a5563;
+  --scene-cargo: #8f6f43;
+  --scene-roof: #7a3d37;
+  --scene-hull: #7d93ae;
+  --scene-body: #3a4452;
+  --scene-road: #3a4250;
+  --scene-mark: #c9d0d8;
+  --art-body: #5d6f86;
+  --art-metal: #7d8896;
+  --art-metal-d: #64707e;
+  --art-glass: #6b93c4;
+  --art-race: #4a5563;
+  --art-glint: #a9c4e6;
+  --art-wafer: #3a4658;
+  --art-wafer-edge: #2f3a4a;
+  --art-die: #56698c;
+  --art-copper: #a66a33;
+  --art-pcb: #2a6e4b;
+  --art-led: #5fbf82;
+  --art-solder: #bf9f63;
+  --art-screen: #0a1d15;
+  --art-crate: #8f6f43;
+  --art-crate-edge: #6e5530;
+  --cargo-3: #199e70;
+  --cargo-4: #d97706;
+  --cargo-5: #8b7cf0;
+  --cargo-6: #8a95a3;
   --map-ocean: #0f1722;
   --map-grat: #1a2433;
   --map-land: #262d38;
@@ -153,10 +271,8 @@
   }
   html {
     @apply font-sans;
-    /* Garamond has a small x-height: scale it up to read like the UI sizes were set for,
-       and use lining figures so numbers sit level with capitals in tables and charts. */
-    font-size-adjust: 0.47;
-    font-variant-numeric: lining-nums;
+    /* Lining, equal-width figures: numbers sit level with capitals and line up in badges, tables and lists */
+    font-variant-numeric: lining-nums tabular-nums;
   }
   h1,
   h2,
@@ -169,11 +285,11 @@
     @apply bg-background text-foreground;
   }
   ::selection {
-    background: rgba(42, 120, 214, 0.2);
+    background: color-mix(in srgb, var(--ring) 20%, transparent);
   }
   /* Visible keyboard focus for every control; zero specificity, so components with their own
      focus style (shadcn rings) keep it */
-  :where(button, a, [role="tab"], [role="button"], input[type="range"]):focus-visible {
+  :where(button, a, summary, [role="tab"], [role="tabpanel"], [role="button"], [role="application"], input[type="range"], input[type="checkbox"]):focus-visible {
     outline: 2px solid var(--ring);
     outline-offset: 2px;
   }
@@ -196,10 +312,32 @@
     animation: none;
     opacity: 0.6;
   }
+  /* Bars, dialogs and menus change at once */
+  *,
+  ::before,
+  ::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }
 
-.tabular {
-  font-variant-numeric: lining-nums tabular-nums;
+/* Warning callout: tinted from the warning status colour */
+@utility callout-warning {
+  border-color: color-mix(in srgb, var(--status-warning) 55%, transparent);
+  background: color-mix(in srgb, var(--status-warning) 12%, transparent);
+}
+
+/* A row that scrolls sideways with no scrollbar; under 360px the right edge fades to show there is more */
+@utility scroll-row {
+  overflow-x: auto;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+  @media (width < 22.5rem) {
+    mask-image: linear-gradient(to right, #000 85%, transparent);
+  }
 }
 
 /* Fewer one-word last lines in running text */
@@ -210,10 +348,9 @@ li {
 
 .memo-h {
   margin-bottom: 4px;
-  border-bottom: 1px solid #d4d4d0;
+  border-bottom: 1px solid var(--paper-rule);
   padding-bottom: 2px;
-  font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: var(--text-xs);
   font-weight: 700;
 }
 
@@ -240,6 +377,20 @@ li {
 }
 
 /* Phones and tablets: the sticky Run footer sits at the bottom of the screen; keep focused fields above it */
-@media (max-width: 1023px) {
-  html { scroll-padding-bottom: 7rem; }
+html { scroll-padding-bottom: 7rem; }
+
+/* The assessment's section tabs stick to the top too: keep scrolled-to targets below them */
+html:has([aria-label="Assessment sections"]) { scroll-padding-top: var(--spacing-tabs); }
+
+/* From desktop width the header stays on screen: scrolled-to targets land below it */
+@media (min-width: 64rem) {
+  html { scroll-padding-top: var(--spacing-header); }
+  html:has([aria-label="Assessment sections"]) { scroll-padding-top: calc(var(--spacing-header) + var(--spacing-tabs)); }
+}
+
+/* While the theme flips, colours change at once instead of fading through unreadable mixes */
+.theme-switching *,
+.theme-switching *::before,
+.theme-switching *::after {
+  transition: none !important;
 }

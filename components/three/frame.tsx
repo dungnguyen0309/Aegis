@@ -112,7 +112,7 @@ export function ToolButton({ label, onClick, active, children }: {
 }) {
   return (
     <button type="button" onClick={onClick} aria-label={label} title={label} aria-pressed={active}
-      className={cn("inline-flex h-7 min-w-7 items-center justify-center gap-1 px-1.5 text-[14px]",
+      className={cn("inline-flex h-7 min-w-7 items-center pointer-coarse:h-11 pointer-coarse:min-w-11 justify-center gap-1 px-1.5 text-sm",
         active ? "bg-primary text-primary-foreground" : "text-foreground hover:bg-muted")}>
       {children}
     </button>
@@ -148,7 +148,7 @@ export function Frame3D({ hostRef, stageRef, label, className, tip, failed, tool
             <ToolButton label="Zoom out" onClick={() => stageRef.current?.zoom(1.25)}><MagnifyingGlassMinusIcon className="size-3.5" /></ToolButton>
             <ToolButton label="Reset view" onClick={() => stageRef.current?.home()}><ArrowCounterClockwiseIcon className="size-3.5" /></ToolButton>
           </div>
-          <div className="pointer-events-none absolute bottom-2 left-3 z-10 text-[14px] text-faint">
+          <div className="pointer-events-none absolute bottom-2 left-3 z-10 text-sm text-faint">
             {/* Zoom has its own buttons; touch screens keep only the drag part, since "click" does not apply */}
             <span className="[@media(hover:none)]:hidden">{hint ?? "Drag to rotate"}</span>
             <span className="hidden [@media(hover:none)]:inline">{(hint ?? "Drag to rotate").split(" · ")[0]}</span>
@@ -156,7 +156,7 @@ export function Frame3D({ hostRef, stageRef, label, className, tip, failed, tool
         </>
       )}
       {tip && (
-        <div className="pointer-events-none absolute z-20 w-max max-w-[260px] border border-border bg-popover px-3 py-2 text-[14px] leading-snug text-popover-foreground shadow-lg tabular"
+        <div className="pointer-events-none absolute z-20 w-max max-w-65 border border-border bg-popover px-3 py-2 text-sm leading-snug text-popover-foreground shadow-lg"
           style={{
             left: tip.x, top: tip.y,
             transform: `translate(${tip.left ? "calc(-100% - 14px)" : "14px"}, ${tip.up ? "calc(-100% - 10px)" : "14px"})`,

@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Flag } from "@/components/visuals";
 import { api } from "@/lib/api";
-import { bandTone, money, pct, times, verdictTone } from "@/lib/format";
+import { bandTone, money, pct, times, verdictTone, zfmt, NONE } from "@/lib/format";
 import type { Assessment, CalcResult, EntityStatus, Reference, Unit, Weights } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -31,7 +31,10 @@ interface Inputs {
   russia: string[];
 }
 
-const k = (v: number) => (v / 1000).toFixed(v < 10_000 ? 1 : 0);
+// Thousands, exact to the euro: rounding here made the calculator disagree with the assessment it was seeded from
+const k = (v: number) => String(Number((v / 1000).toFixed(3)));
+// Seeded cells show whole thousands (one decimal below 10); the exact figure stays in state until the cell is edited
+const shown = (s = "") => (s ? String(Number(s) >= 10 ? Math.round(Number(s)) : Number(Number(s).toFixed(1))) : "");
 const num = (s: string) => {
   const x = Number.parseFloat(s.replace(",", "."));
   return Number.isFinite(x) && x > 0 ? x * 1000 : 0;
@@ -57,18 +60,19 @@ function Slider({ label, value, min, max, step, onChange, format }: {
 }) {
   return (
     <div>
-      <div className="mb-1 flex justify-between text-[15px]">
+      <div className="mb-1 flex justify-between text-sm">
         <span className="font-semibold">{label}</span>
-        <span className="font-bold tabular">{format(value)}</span>
+        <span className="font-bold">{format(value)}</span>
       </div>
-      <input type="range" min={min} max={max} step={step} value={value} aria-label={label}
-        onChange={(e) => onChange(Number(e.target.value))} className="h-1.5 w-full cursor-pointer accent-[var(--series-1)]" />
+      <input type="range" min={min} max={max} step={step} value={value} aria-label={label} aria-valuetext={format(value)}
+        onChange={(e) => onChange(Number(e.target.value))} className="h-1.5 w-full cursor-pointer accent-series-1 pointer-coarse:h-11" />
     </div>
   );
 }
 
 /** What-if calculator: edit the export figures and see the route score and recommended action update. */
-export function CalculatorView({ reference, from }: { reference: Reference | null; from: Assessment | null }) {
+/** `example`: `from` is one of the built-in example cases, not an assessment the officer ran. */
+export function CalculatorView({ reference, from, example }: { reference: Reference | null; from: Assessment | null; example?: boolean }) {
   const start = useMemo(() => (from ? fromAssessment(from) : EXAMPLE), [from]);
   const [inputs, setInputs] = useState<Inputs>(start);
   const [toCountry, setToCountry] = useState(0); // log2 multiplier for exports to the country since 2022
@@ -125,18 +129,18 @@ export function CalculatorView({ reference, from }: { reference: Reference | nul
     <div className="space-y-4">
       <PageHeader title="Calculator"
         actions={<>
-          <Button variant="outline" size="sm" onClick={reset}><ArrowCounterClockwiseIcon /> {from ? "Reset to assessment" : "Reset to example"}</Button>
+          <Button variant="outline" size="sm" onClick={reset}><ArrowCounterClockwiseIcon /> {from && !example ? "Reset to assessment" : "Reset to example"}</Button>
           <Button variant="outline" size="sm" onClick={download}><DownloadSimpleIcon /> Download CSV</Button>
         </>} />
 
       <div className="grid gap-4 lg:grid-cols-[400px_minmax(0,1fr)]">
-        <Panel title="Inputs" subtitle={from ? `From the assessment of ${from.query.company}` : "Example figures"}
+        <Panel title="Inputs" subtitle={!from ? "Example figures" : example ? `From the example case ${from.query.company}` : `From the assessment of ${from.query.company}`}
           // on desktop a plain column with a rule, like the Assess form, not a card that ends short of the results
-          className="lg:sticky lg:top-4 lg:self-start lg:border-0 lg:border-r lg:bg-transparent"
+          className="lg:sticky lg:top-header lg:self-start lg:border-0 lg:border-r lg:bg-transparent"
           headerClassName="lg:pl-0 lg:pt-0" bodyClassName="space-y-4 lg:pl-0">
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="calc-hs" className="text-[17px] font-semibold">HS code</Label>
+              <Label htmlFor="calc-hs" className="text-base font-semibold">HS code</Label>
               <Input id="calc-hs" list="calc-hs-list" inputMode="numeric" value={inputs.hs} maxLength={6} aria-invalid={!hsValid}
                 onChange={(e) => set({ hs: e.target.value.replace(/\D/g, "").slice(0, 6) })} />
               <datalist id="calc-hs-list">
@@ -144,7 +148,7 @@ export function CalculatorView({ reference, from }: { reference: Reference | nul
               </datalist>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="calc-via" className="text-[17px] font-semibold">Transit country</Label>
+              <Label htmlFor="calc-via" className="text-base font-semibold">Transit country</Label>
               <Select value={inputs.intermediary} onValueChange={(v) => set({ intermediary: v })}>
                 <SelectTrigger id="calc-via" className="w-full"><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -153,12 +157,12 @@ export function CalculatorView({ reference, from }: { reference: Reference | nul
               </Select>
             </div>
           </div>
-          <p className="-mt-2 text-[14px] text-muted-foreground">
+          <p className="-mt-2 text-sm text-muted-foreground">
             {hsInfo ? `Tier ${hsInfo.tier} · ${hsInfo.description}` : hsValid ? "Not on item list" : "Six digits"}
           </p>
 
           <div className="space-y-1.5">
-            <span className="block text-[17px] font-semibold">Sanctions screening</span>
+            <span className="block text-base font-semibold">Sanctions screening</span>
             <Segmented value={inputs.screening} onChange={(v) => set({ screening: v })} options={[
               { value: "CLEAN", label: "No match" }, { value: "PARTIAL", label: "Possible match" }, { value: "MATCH", label: "Match" },
             ]} />
@@ -171,13 +175,21 @@ export function CalculatorView({ reference, from }: { reference: Reference | nul
             <Slider label="Direct exports to Russia since 2022" value={toRussia} min={0} max={2} step={0.05}
               onChange={setToRussia} format={(v) => times(v)} />
           </div>
+          {/* Phones: the full result is below the table, so show what the sliders change right next to them */}
+          {r && result && (
+            <div className={cn("flex flex-wrap items-center gap-x-3 gap-y-1.5 border border-border bg-background px-3 py-2 text-sm transition-opacity lg:hidden", busy && "opacity-70")}>
+              <span className="inline-flex items-center gap-1.5">Route risk <span className="font-bold">{r.score}/100</span> <StatusBadge tone={bandTone[r.band]}>{r.band}</StatusBadge></span>
+              <span className="inline-flex items-center gap-1.5">Hypothetical action <StatusBadge tone={verdictTone[result.verdict.code]}>{result.verdict.code}</StatusBadge></span>
+            </div>
+          )}
 
           <hr className="border-border" />
           <div>
-            <div className="mb-2 text-[17px] font-semibold">Yearly exports ({sym} thousand)</div>
-            <table className="w-full text-[15px]">
+            <div className="mb-2 text-base font-semibold">Yearly exports ({sym} thousand)</div>
+            <div className="overflow-x-auto">
+            <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-[14px] text-muted-foreground">
+                <tr className="text-left text-sm text-muted-foreground">
                   <th className="pb-1 font-normal">Year</th>
                   <th className="pb-1 font-normal"><span className="inline-flex items-center gap-1"><Flag code={inputs.intermediary} size={14} /> {countryName}</span></th>
                   <th className="pb-1 font-normal"><span className="inline-flex items-center gap-1"><Flag code="RU" size={14} /> Russia</span></th>
@@ -186,10 +198,10 @@ export function CalculatorView({ reference, from }: { reference: Reference | nul
               <tbody>
                 {inputs.years.map((y, i) => (
                   <tr key={y} className={cn(y < SANCTIONS_YEAR && "text-muted-foreground", y === SANCTIONS_YEAR && "border-t-2 border-border")}>
-                    <th scope="row" className="py-0.5 pr-2 text-left font-normal tabular">{y}</th>
+                    <th scope="row" className="py-0.5 pr-2 text-left font-normal">{y}</th>
                     {(["values", "russia"] as const).map((col) => (
                       <td key={col} className="py-0.5 pr-1">
-                        <Input inputMode="decimal" value={inputs[col][i] ?? ""} className="h-7 text-right tabular"
+                        <Input inputMode="decimal" value={inputs[col][i] === start[col][i] ? shown(start[col][i]) : (inputs[col][i] ?? "")} className="h-7 text-right pointer-coarse:h-11"
                           aria-label={`${col === "values" ? countryName : "Russia"} ${y}`}
                           onChange={(e) => setInputs((s) => {
                             const next = [...s[col]];
@@ -202,7 +214,8 @@ export function CalculatorView({ reference, from }: { reference: Reference | nul
                 ))}
               </tbody>
             </table>
-            <p className="mt-2 text-[14px] text-muted-foreground">
+            </div>
+            <p className="mt-2 text-sm text-muted-foreground">
               Above the line: pre-war ({inputs.years[0]}–{String(SANCTIONS_YEAR - 1).slice(2)})
             </p>
           </div>
@@ -216,34 +229,37 @@ export function CalculatorView({ reference, from }: { reference: Reference | nul
             </div>
           ) : (
             <>
-              <section className={cn("border border-border bg-card transition-opacity", busy && "opacity-70")} aria-live="polite">
+              <section className={cn("border border-border bg-card transition-opacity", busy && "opacity-70")}>
+                <p className="sr-only" aria-live="polite">{busy ? "" : `Route risk ${r.score} of 100, ${r.band}`}</p>
                 <div className="flex flex-wrap items-start justify-between gap-4 px-5 py-4">
                   <div>
-                    <div className="text-[14px] text-muted-foreground">Route risk</div>
-                    <div className="mt-0.5 flex items-center gap-2">
-                      <span className="text-4xl font-bold leading-none tabular">{r.score}</span>
+                    <div className="text-sm text-muted-foreground">Route risk</div>
+                    <div className="mt-0.5 flex flex-wrap items-center gap-2">
+                      <span className="text-3xl font-bold leading-none">{r.score}</span>
                       <span className="text-muted-foreground">/ 100</span>
                       <StatusBadge tone={bandTone[r.band]}>{r.band}</StatusBadge>
                       {busy && <SpinnerGapIcon className="size-4 animate-spin text-muted-foreground" />}
                     </div>
                   </div>
                   <div className="flex flex-col items-start gap-1 sm:items-end">
-                    <span className="text-[14px] text-muted-foreground">Action</span>
-                    <StatusBadge tone={verdictTone[result.verdict.code]} className="h-8 px-3 text-[15px]">{result.verdict.code}</StatusBadge>
+                    <span className="text-sm text-muted-foreground">Action</span>
+                    <StatusBadge tone={verdictTone[result.verdict.code]} className="h-8 px-3 text-sm">{result.verdict.code}</StatusBadge>
                   </div>
                 </div>
                 <div className="border-t border-border px-5 py-3">
-                  <p className="text-[17px] font-bold">{result.verdict.title}</p>
-                  {result.verdict.notes.map((n) => <p key={n} className="text-[15px] text-muted-foreground">{n}</p>)}
+                  {/* What-if figures can look like a screening result: say plainly that they are not */}
+                  <p className="mb-1 text-sm font-semibold text-warning-ink">Hypothetical: what the action would be for these figures, not a screening result</p>
+                  <p className="text-base font-bold">{result.verdict.title}</p>
+                  {result.verdict.notes.map((n) => <p key={n} className="text-sm text-muted-foreground">{n}</p>)}
                 </div>
                 <div className="grid grid-cols-2 gap-4 border-t border-border px-5 py-3 md:grid-cols-4">
-                  <Stat label="Pre-war exports a year" value={money(r.baseline.mean, inputs.unit)} sub={`± ${money(r.baseline.std, inputs.unit)}`} />
-                  <Stat label="Exports vs pre-war" value={r.multiplier !== null ? times(r.multiplier) : r.emergent ? "New flow" : "—"} />
-                  <Stat label="Highest Z-score" value={r.z_max !== null ? r.z_max.toFixed(1) : "—"}
-                    sub={r.z_max_year ? `${r.z_max_year} · unusual above ${r.threshold}` : undefined} />
-                  <Stat label="Direct exports to Russia" value={r.russia_ratio !== null ? pct(r.russia_ratio - 1) : "—"} sub="since 2022 vs pre-war" />
+                  <Stat label="Pre-war exports a year" value={money(r.baseline.mean, inputs.unit)} sub={`Varies by ${money(r.baseline.std, inputs.unit)} a year`} />
+                  <Stat label="Exports vs pre-war" value={r.multiplier !== null ? times(r.multiplier) : r.emergent ? "New flow" : NONE} />
+                  <Stat label="Most unusual year" value={r.z_max !== null && r.z_max_year ? r.z_max_year : NONE}
+                    sub={r.z_max !== null ? `${zfmt(Math.abs(r.z_max))} standard deviations ${r.z_max < 0 ? "below" : "above"} pre-war${r.z_max > r.threshold ? "" : ", within the usual range"}` : undefined} />
+                  <Stat label="Direct exports to Russia" value={r.russia_ratio !== null ? pct(r.russia_ratio - 1) : NONE} sub="since 2022 vs pre-war" />
                 </div>
-                {r.note && <p className="border-t border-border px-5 py-2 text-[15px] text-muted-foreground">{r.note}</p>}
+                {r.note && <p className="border-t border-border px-5 py-2 text-sm text-muted-foreground">{r.note}</p>}
               </section>
 
               <Panel title={`Exports to ${countryName}`}>

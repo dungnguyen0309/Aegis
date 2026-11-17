@@ -7,8 +7,8 @@
 export type CorridorMode = "sea" | "rail" | "road" | "air";
 export type Leg = "inbound" | "onward" | "restricted";
 
-/** Line colours by leg, shared by the flat map and the globe. */
-export const LEG_COLOR = { inbound: "#2a78d6", onward: "#d03b3b", restricted: "#8f959e" } as const;
+/** Line colours by leg (theme tokens), shared by the flat map, the legend and the globe. */
+export const LEG_COLOR = { inbound: "var(--series-1)", onward: "var(--status-critical)", restricted: "var(--chart-baseline)" } as const;
 
 export interface Corridor {
   id: string;
@@ -196,5 +196,6 @@ export const NUMERIC: Record<string, string> = {
   GE: "268", UZ: "860", TJ: "762", AZ: "031", TR: "792", AE: "784", CN: "156", HK: "344", RS: "688", RU: "643",
   BY: "112",
 };
+export const INTERMEDIARY_IDS = new Set(INTERMEDIARY_CODES.map((k) => NUMERIC[k]));
 export const EU27_NUMERIC = ["040", "056", "100", "191", "196", "203", "208", "233", "246", "250", "276", "300",
   "348", "372", "380", "428", "440", "442", "470", "528", "616", "620", "642", "703", "705", "724", "752"];

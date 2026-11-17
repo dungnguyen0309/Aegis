@@ -4,6 +4,7 @@
  * `userData.part` (name) and `userData.note` so the viewer can label it on hover.
  */
 import * as THREE from "three";
+import { cssVar, pageFont } from "@/lib/three-stage";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import { mergeStatic } from "@/lib/three-merge";
 
@@ -15,7 +16,9 @@ export interface Model {
 }
 
 const DARK = "#2f3e4e", BLACK = "#1c2228", STEEL = "#9aa5b1", CHROME = "#d9dee4", ALU = "#c4cad1";
-const COPPER = "#c27c3a", GOLD = "#d6a742", GREEN = "#2f7d4f", GLASS = "#6f9fd6", BRASS = "#c9a14a";
+// Shared with the flat drawings in product-art.tsx; read at build time so the theme applies.
+const COPPER = () => cssVar("--art-copper"), PCB = () => cssVar("--art-pcb");
+const GOLD = "#d6a742", GLASS = "#6f9fd6", BRASS = "#c9a14a";
 
 function mat(color: string, o: { metal?: number; rough?: number; glow?: string; opacity?: number; map?: THREE.Texture } = {}) {
   return new THREE.MeshStandardMaterial({
@@ -52,7 +55,7 @@ function canvas(w: number, h: number, draw: (ctx: CanvasRenderingContext2D) => v
 /* ------------------------------------------------------------------ models */
 
 function chip(g: THREE.Group): Model {
-  add(g, box(2.3, 0.06, 2.3), mat(GREEN, { rough: 0.7 }), "Circuit board", "The chip is soldered onto a printed circuit board.", [0, -0.03, 0]);
+  add(g, box(2.3, 0.06, 2.3), mat(PCB(), { rough: 0.7 }), "Circuit board", "The chip is soldered onto a printed circuit board.", [0, -0.03, 0]);
   add(g, rbox(1.4, 0.16, 1.4, 0.03), mat(DARK, { rough: 0.75 }), "Moulded package", "Epoxy housing that protects the silicon.", [0, 0.13, 0]);
   add(g, box(0.52, 0.02, 0.52), mat("#3a4f93", { metal: 0.7, rough: 0.2 }), "Silicon die (decapped)",
     "The integrated circuit itself. Its performance decides whether dual-use controls apply.", [0, 0.215, 0]);
@@ -117,7 +120,7 @@ function radio(g: THREE.Group): Model {
 }
 
 function navigation(g: THREE.Group): Model {
-  add(g, box(1.5, 0.06, 1.5), mat(GREEN, { rough: 0.7 }), "Circuit board", "Receiver module board.", [0, 0.03, 0]);
+  add(g, box(1.5, 0.06, 1.5), mat(PCB(), { rough: 0.7 }), "Circuit board", "Receiver module board.", [0, 0.03, 0]);
   add(g, box(0.8, 0.14, 0.8), mat("#d6c8a6", { rough: 0.8 }), "Ceramic patch antenna", "Receives satellite navigation signals (GNSS).", [-0.2, 0.13, -0.15]);
   add(g, box(0.6, 0.012, 0.6), metal(CHROME, 0.3), "Ceramic patch antenna", "Receives satellite navigation signals (GNSS).", [-0.2, 0.206, -0.15]);
   add(g, box(0.45, 0.12, 0.38), metal(ALU, 0.35), "RF shield can", "Screens the radio-frequency front end.", [0.45, 0.12, 0.45]);
@@ -228,8 +231,8 @@ function computer(g: THREE.Group): Model {
 }
 
 function converter(g: THREE.Group): Model {
-  add(g, box(1.7, 0.06, 1.15), mat(GREEN, { rough: 0.7 }), "Circuit board", "Power-supply board.", [0, 0.03, 0]);
-  add(g, new THREE.TorusGeometry(0.3, 0.13, 20, 48), metal(COPPER, 0.35), "Toroidal transformer", "Converts voltage; copper windings on a ring core.", [-0.4, 0.2, 0], [Math.PI / 2, 0, 0]);
+  add(g, box(1.7, 0.06, 1.15), mat(PCB(), { rough: 0.7 }), "Circuit board", "Power-supply board.", [0, 0.03, 0]);
+  add(g, new THREE.TorusGeometry(0.3, 0.13, 20, 48), metal(COPPER(), 0.35), "Toroidal transformer", "Converts voltage; copper windings on a ring core.", [-0.4, 0.2, 0], [Math.PI / 2, 0, 0]);
   add(g, box(0.75, 0.08, 0.6), metal(ALU, 0.4), "Heat sink", "Cools the power transistors.", [0.4, 0.1, 0]);
   for (let i = 0; i < 9; i++) add(g, box(0.035, 0.45, 0.6), metal(ALU, 0.4), "Heat sink", "Cools the power transistors.", [0.08 + i * 0.08, 0.35, 0]);
   [[-0.65, 0.42], [-0.15, 0.42]].forEach(([x, z]) => add(g, cyl(0.1, 0.1, 0.32, 24), mat("#2a78d6", { rough: 0.35 }), "Capacitors", "Smooth the output.", [x, 0.22, z]));
@@ -312,9 +315,9 @@ function fab(g: THREE.Group): Model {
 
 function pcb(g: THREE.Group): Model {
   const art = canvas(680, 480, (ctx) => {
-    ctx.fillStyle = "#2f7d4f";
+    ctx.fillStyle = PCB();
     ctx.fillRect(0, 0, 680, 480);
-    ctx.strokeStyle = "#c98b4a";
+    ctx.strokeStyle = COPPER();
     ctx.lineWidth = 6;
     ctx.lineCap = "round";
     for (let i = 0; i < 14; i++) {
@@ -334,7 +337,7 @@ function pcb(g: THREE.Group): Model {
       ctx.fill();
     }
     ctx.fillStyle = "#e8edf2";
-    ctx.font = "bold 22px sans-serif";
+    ctx.font = `700 22px ${pageFont()}`;
     ctx.fillText("REV B  ·  8-LAYER", 420, 30);
   });
   const edge = mat("#2a6e46", { rough: 0.7 });
@@ -414,10 +417,10 @@ function crate(g: THREE.Group): Model {
     ctx.fillStyle = "rgba(0,0,0,0.08)";
     for (let y = 0; y < 360; y += 60) ctx.fillRect(0, y, 512, 3);
     ctx.fillStyle = "#2b2b2b";
-    ctx.font = "bold 46px sans-serif";
+    ctx.font = `700 46px ${pageFont()}`;
     ctx.textAlign = "center";
     ctx.fillText("EXPORT CONTROLLED", 256, 150);
-    ctx.font = "bold 34px sans-serif";
+    ctx.font = `700 34px ${pageFont()}`;
     ctx.fillText("HANDLE WITH CARE  ↑", 256, 215);
   });
   add(g, box(1.4, 1.0, 1.0), [wood, wood, wood, wood, new THREE.MeshStandardMaterial({ map: stencil, roughness: 0.85 }), wood],

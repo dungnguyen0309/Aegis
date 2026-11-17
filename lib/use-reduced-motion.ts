@@ -12,3 +12,6 @@ function subscribe(onChange: () => void) {
 export function useReducedMotion(): boolean {
   return useSyncExternalStore(subscribe, () => window.matchMedia(QUERY).matches, () => true);
 }
+
+/** Scroll behaviour that respects reduced motion (browsers do not apply it to scripted smooth scrolling). */
+export const scrollMode = (): ScrollBehavior => (window.matchMedia(QUERY).matches ? "auto" : "smooth");

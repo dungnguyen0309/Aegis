@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { money } from "@/lib/format";
+import { money, NONE } from "@/lib/format";
 import type { Sankey } from "@/lib/types";
 import { regionName } from "@/components/visuals";
 
@@ -74,7 +74,7 @@ export function FlowDiagram({ s, exporterName, hs, highlight }: {
                 {regionName(r.partner).replace("United Arab Emirates", "UAE")}
               </text>
               <text x={X_MID + BOX - 8} y={ym + 4} fontSize={11.5} textAnchor="end" fill="var(--foreground)" fontWeight={700}>
-                {r.reported ? money(r.to_russia ?? 0, "USD") : "—"}
+                {r.reported ? money(r.to_russia ?? 0, "USD") : NONE}
               </text>
               <title>{`${regionName(r.partner)}: ${money(r.from_exporter, "USD", 2)} from ${exporterName}; ${r.reported ? money(r.to_russia ?? 0, "USD", 2) : "not reported"} to Russia (all origins)`}</title>
             </g>
@@ -86,7 +86,7 @@ export function FlowDiagram({ s, exporterName, hs, highlight }: {
         <rect x={X_RIGHT} y={TOP} width={BAR} height={rightH} rx={2} fill="var(--series-2)" />
         <text x={X_RIGHT + BAR + 6} y={TOP + rightH / 2 + 4} fontSize={12} fill="var(--foreground)">{money(totalOut, "USD")}</text>
       </svg>
-      <p className="mt-1 text-[14px] text-muted-foreground">
+      <p className="mt-1 text-sm text-muted-foreground">
         {s.year} · USD · UN Comtrade. Right: exports to Russia from any origin. Band widths: square-root scale.
       </p>
     </div>

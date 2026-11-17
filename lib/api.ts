@@ -9,6 +9,15 @@ export class ApiUnavailable extends Error {
   }
 }
 
+/** The server refused the input (422): resending it cannot help, the form needs a fix. `field` names the input when known. */
+export class InvalidInput extends Error {
+  field?: string;
+  constructor(message: string, field?: string) {
+    super(message);
+    this.field = field;
+  }
+}
+
 /** True when the backend answers its health check. */
 export async function healthy(): Promise<boolean> {
   try {
@@ -25,9 +34,11 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
       ...init,
       headers: { "Content-Type": "application/json", ...init?.headers },
       // Live data can take ~15 s (paced UN Comtrade calls); anything past 30 s is stuck
-      signal: AbortSignal.timeout(30_000),
+      signal: init?.signal ? AbortSignal.any([init.signal, AbortSignal.timeout(30_000)]) : AbortSignal.timeout(30_000),
     });
   } catch (e) {
+    // The caller cancelled: let it handle that quietly
+    if (init?.signal?.aborted) throw e;
     if (e instanceof DOMException && e.name === "TimeoutError") {
       throw new Error("The analysis service took too long to answer. Try again.");
     }
@@ -36,14 +47,20 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
   if (!res.ok) {
     let detail = `${res.status} ${res.statusText}`;
     let fromApi = false;
+    let field: string | undefined;
     try {
       const body = await res.json();
       fromApi = "detail" in body;
       if (typeof body.detail === "string") detail = body.detail;
-      else if (Array.isArray(body.detail)) detail = body.detail.map((d: { msg: string }) => { const m = d.msg.replace(/^Value error, /, ""); return /[.!?]$/.test(m) ? m : `${m}.`; }).join(" ");
+      else if (Array.isArray(body.detail)) {
+        detail = body.detail.map((d: { msg: string }) => { const m = d.msg.replace(/^Value error, /, ""); return /[.!?]$/.test(m) ? m : `${m}.`; }).join(" ");
+        const loc = body.detail[0]?.loc;
+        if (Array.isArray(loc)) field = String(loc.at(-1));
+      }
     } catch {
       /* not a FastAPI error body */
     }
+    if (fromApi && res.status === 422) throw new InvalidInput(detail, field);
     // A bare 5xx with no FastAPI body usually means the backend is down (the dev proxy answers 500)
     if (!fromApi && res.status >= 500 && !(await healthy())) throw new ApiUnavailable();
     throw new Error(fromApi ? detail : `The analysis service returned an error (${detail}). Try again.`);
@@ -83,6 +100,6 @@ export const api = {
   company: (name: string, country: string | null) =>
     call<Registry>(`/company?name=${encodeURIComponent(name)}${country ? `&country=${country}` : ""}`),
   calculate: (req: CalcRequest) => call<CalcResult>("/calculate", { method: "POST", body: JSON.stringify(req) }),
-  batch: (rows: BatchRowIn[], exporter: string) =>
-    call<BatchResult>("/batch", { method: "POST", body: JSON.stringify({ rows, exporter }) }),
+  batch: (rows: BatchRowIn[], exporter: string, signal?: AbortSignal) =>
+    call<BatchResult>("/batch", { method: "POST", body: JSON.stringify({ rows, exporter }), signal }),
 };

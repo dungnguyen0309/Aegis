@@ -4,6 +4,7 @@ import { PauseIcon, PlayIcon } from "@phosphor-icons/react";
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { Frame3D, ToolButton, type Tip, tipAt, usePicking, useStage } from "@/components/three/frame";
+import { VIEW_H } from "@/components/three/lazy";
 import { buildModel } from "@/components/three/item-models";
 import { productKind } from "@/components/product-art";
 import { useTheme } from "@/lib/theme";
@@ -161,7 +162,7 @@ export function Item3D({ hs, description }: { hs: string; description: string | 
 
   return (
     <div>
-      <Frame3D hostRef={hostRef} stageRef={stageRef} failed={failed} tip={tip} className="h-[300px] bg-card"
+      <Frame3D hostRef={hostRef} stageRef={stageRef} failed={failed} tip={tip} className={`${VIEW_H.item} bg-card`}
         label={`3D model of HS ${hs}${description ? `, ${description}` : ""}`}
         hint="Drag to rotate"
         overlay={!shown && !failed && (
@@ -173,11 +174,11 @@ export function Item3D({ hs, description }: { hs: string; description: string | 
           </ToolButton>
         )} />
       {parts.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1.5" aria-label="Parts">
+        <div className="mt-2 flex flex-wrap gap-1.5" role="group" aria-label="Parts">
           {parts.map((p) => (
             <button key={p} type="button" onMouseEnter={() => setHovered(p)} onMouseLeave={() => setHovered(null)}
               onFocus={() => setHovered(p)} onBlur={() => setHovered(null)}
-              className={cn("border px-2 py-0.5 text-[14px] transition-colors", hovered === p ? "border-ring bg-ring/10" : "border-border")}>
+              className={cn("border px-2 py-0.5 text-sm transition-colors pointer-coarse:min-h-11", hovered === p ? "border-ring bg-ring/10" : "border-border")}>
               {p}
             </button>
           ))}

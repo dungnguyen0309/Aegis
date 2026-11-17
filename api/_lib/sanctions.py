@@ -185,3 +185,23 @@ async def screen(company: str, jurisdiction: str | None, ubos: list[str], live: 
         "lists": ["EU consolidated (FSF)", "US OFAC SDN", "UN Security Council"],
         "warning": warning,
     }
+
+
+def apply_reviews(entity: dict, reviews: list[dict]) -> dict:
+    """The officer's decision on each listed match: 'different' clears it, 'same' confirms it whatever the score.
+    Statuses are recomputed from the matches still standing; `unreviewed` counts hits nobody has confirmed yet."""
+    decided = {(r["subject"], r["match_id"]): r for r in reviews}
+    order = {"CLEAN": 0, "PARTIAL": 1, "MATCH": 2}
+    for s in entity["subjects"]:
+        for m in s["matches"]:
+            r = decided.get((s["name"], m["id"]))
+            m["review"] = {"decision": r["decision"], "reason": r["reason"], "at": r.get("at"), "by": r.get("by")} if r else None
+        standing = [m for m in s["matches"] if not (m["review"] and m["review"]["decision"] == "different")]
+        s["confirmed"] = any(m["review"] and m["review"]["decision"] == "same" for m in standing)
+        s["best_score"] = max((m["score"] for m in standing), default=0.0)
+        s["status"] = "MATCH" if s["confirmed"] else _status(s["best_score"])
+    worst = max(entity["subjects"], key=lambda r: (order[r["status"]], r["best_score"]))
+    best = max(worst["best_score"], MATCH_AT) if worst["confirmed"] else worst["best_score"]
+    entity.update(status=worst["status"], best_score=worst["best_score"], score=entity_score(best, worst["status"]),
+                  unreviewed=sum(s["status"] != "CLEAN" and not s["confirmed"] for s in entity["subjects"]))
+    return entity

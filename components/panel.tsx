@@ -26,8 +26,8 @@ export function Panel({
     <Card data-tour={tour} className={cn("gap-0 py-0 border border-border", className)}>
       <div className={cn("flex flex-wrap items-start justify-between gap-x-3 gap-y-2 border-b border-border px-4 py-3", headerClassName)}>
         <div className="min-w-0">
-          <h2 className="text-[19px] font-bold leading-tight text-foreground">{title}</h2>
-          {subtitle && <p className="mt-0.5 text-[15px] leading-snug text-muted-foreground">{subtitle}</p>}
+          <h2 className="text-lg font-bold leading-tight text-foreground">{title}</h2>
+          {subtitle && <p className="mt-0.5 text-sm leading-snug text-muted-foreground">{subtitle}</p>}
         </div>
         {action && <div className="flex max-w-full shrink-0 flex-wrap items-center gap-2">{action}</div>}
       </div>
@@ -46,8 +46,8 @@ export function PageHeader({ title, description, actions, tour }: {
   return (
     <div data-tour={tour} className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
       <div className="min-w-0">
-        <h1 className="text-[24px] font-bold leading-tight sm:text-[30px]">{title}</h1>
-        {description && <p className="mt-1 max-w-3xl text-[16px] text-muted-foreground">{description}</p>}
+        <h1 className="text-xl font-bold leading-tight sm:text-3xl">{title}</h1>
+        {description && <p className="mt-1 max-w-3xl text-base text-muted-foreground">{description}</p>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     </div>

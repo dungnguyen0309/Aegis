@@ -26,10 +26,24 @@ LEVELS = {
 # A sanctions match ends the transaction: these steps replace the due-diligence list
 STOP_ACTIONS = [
     "Stop the shipment and any payment now.",
-    "Escalate to the export control officer (Ausfuhrverantwortliche/r) and legal counsel with the listed name.",
+    "Escalate to the export control officer and legal counsel with the listed name.",
     "Record the outcome, the match and the lists checked in the compliance file.",
 ]
+EDD_HOLD = "Do not ship until enhanced due diligence is complete."
+
+
+# Required by law for battlefield items (Art. 12g Reg. 833/2014), not a judgement call
+NO_RUSSIA_ACTION = "Check the contract has the Art. 12g No-Russia clause with enforceable remedies."
+
+
+def _short_edd(chpl: bool) -> list[str]:
+    """The first due-diligence steps in one line each, for the action box; the briefing has the full list."""
+    return (["Get a signed end-use statement naming the final consignee, end use and location."]
+            + ([NO_RUSSIA_ACTION] if chpl else [])
+            + ["Run corporate due diligence on the buyer, its owners and directors."])
+REVIEW_ACTION = "Check each listed match on the Buyer tab and record whether it is the same entity, with the reason."
 ENTITY_LABEL = {"CLEAN": "No match", "PARTIAL": "Possible match", "MATCH": "Match"}
+ROLE = {"Company": "Buyer", "UBO / director": "Owner or director"}  # the app's words for the screening roles
 MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
 SOURCES = [
@@ -76,32 +90,59 @@ def decide(entity: dict, route: dict, classification: dict) -> dict:
     else:
         code = "STANDARD"
     if entity["status"] == "CLEAN" and route["band"] in ("CRITICAL", "HIGH"):
-        notes.append("No sanctions match does not offset route risk: shell companies are often unlisted.")
+        notes.append("A clean sanctions screening does not offset route risk: shell companies are often unlisted.")
     if route.get("no_data"):
         notes.append("No trade data could be fetched for this item and route. Run the assessment again later.")
     elif route.get("no_baseline"):
         notes.append("No pre-war trade to compare with: the statistical parts of route risk are missing.")
-    if classification["chpl"]:
+    if classification["chpl"] and code not in ("RED FLAG", "ELEVATED", "STOP"):  # a step there, moot on a Stop
         notes.append("Art. 12g No-Russia clause is mandatory for this item at any risk level.")
-    return {"code": code, **LEVELS[code], "notes": notes, "actions": STOP_ACTIONS if code == "STOP" else []}
+    cleared = sum((m.get("review") or {}).get("decision") == "different"
+                  for s in entity.get("subjects", []) for m in s["matches"])
+    if cleared:
+        notes.append(f"{cleared} listed match{'es' if cleared > 1 else ''} cleared as a different entity; reasons are in the briefing.")
+    level = dict(LEVELS[code])
+    edd = _short_edd(classification["chpl"])
+    actions = {"STOP": list(STOP_ACTIONS), "RED FLAG": [EDD_HOLD] + edd, "ELEVATED": edd}.get(code, [])
+    if entity.get("unreviewed") and code in ("STOP", "HOLD"):
+        # A name hit is not yet an identification: the officer confirms or clears it (after stopping, for a match)
+        actions.insert(1 if code == "STOP" else 0, REVIEW_ACTION)
+    if code == "STOP" and entity.get("subjects"):
+        # The title follows the match behind the stop, not open hits on other names
+        confirmed = any(s.get("confirmed") and s["status"] == "MATCH" for s in entity["subjects"])
+        level["title"] = "Sanctions match confirmed: do not proceed" if confirmed else "Likely sanctions match: do not proceed"
+    # `required`: steps the law requires, which the action box never folds away
+    return {"code": code, **level, "notes": notes, "actions": actions,
+            "required": [s for s in actions if s == NO_RUSSIA_ACTION]}
+
+
+def _standing(subj: dict) -> list[dict]:
+    """Matches the officer has not cleared as a different entity; a confirmed one first, since it is the finding."""
+    standing = [m for m in subj["matches"] if (m.get("review") or {}).get("decision") != "different"]
+    return sorted(standing, key=lambda m: (m.get("review") or {}).get("decision") != "same")
 
 
 def _money(v: float, unit: str = "EUR") -> str:
     sym = "€" if unit == "EUR" else "$"
     a = abs(v)
+    # The app's format: "€1.2B", "€3.4M", "€84K", "€4.3K", "€950", "€3.45"
     if a >= 1e9:
-        return f"{sym}{v / 1e9:.2f}bn"
+        return f"{sym}{v / 1e9:.1f}B"
     if a >= 1e6:
-        return f"{sym}{v / 1e6:.2f}m"
-    if a >= 1e4:
-        return f"{sym}{v / 1e3:.0f}k"
-    # small amounts (and prices per kg) in full: "€1,020", "€3.45"
+        return f"{sym}{v / 1e6:.1f}M"
+    if a >= 1e3:
+        return f"{sym}{v / 1e3:.1f}K" if a < 1e4 and v % 1e3 else f"{sym}{v / 1e3:.0f}K"
     return f"{sym}{v:,.0f}" if a >= 10 else f"{sym}{v:.2f}"
+
+
+def _hs(code: str) -> str:
+    """The app's HS format: 8542.31."""
+    return f"{code[:4]}.{code[4:]}"
 
 
 def _findings(ctx: dict) -> list[dict]:
     a, e, c, q = ctx["route"], ctx["entity"], ctx["classification"], ctx["query"]
-    partner, hs, unit = q["intermediary_name"], c["hs"], ctx["series"].get("unit", "EUR")
+    partner, hs, unit = q["intermediary_name"], _hs(c["hs"]), ctx["series"].get("unit", "EUR")
     exporter = q["exporter_name"]
     out = []
 
@@ -109,15 +150,17 @@ def _findings(ctx: dict) -> list[dict]:
         out.append({"severity": severity, "area": area, "text": text})
 
     for subj in e["subjects"]:
-        if subj["status"] != "CLEAN" and subj["matches"]:
-            m = subj["matches"][0]
+        standing = _standing(subj)
+        if subj["status"] != "CLEAN" and standing:
+            m = standing[0]
             since = f"; listed since {m['listed_since']}" if m.get("listed_since") else ""
+            how = "is confirmed by the officer as" if subj.get("confirmed") else "resembles"
             add("critical" if subj["status"] == "MATCH" else "high", "Buyer",
-                f"{subj['role']} '{subj['name']}' resembles '{m['name']}' ({', '.join(m['lists'])}) at "
+                f"{ROLE.get(subj['role'], subj['role'])} '{subj['name']}' {how} '{m['name']}' ({', '.join(m['lists'])}) at "
                 f"{m['score']:.0f}% similarity{since}.")
     if e["status"] == "CLEAN":
-        add("info", "Buyer", f"No match or possible match (80% similarity or more) on the EU, US and UN lists "
-                             f"for {len(e['subjects'])} name(s) ({e['source']}).")
+        add("info", "Buyer", f"No match and no possible match (80% similarity or more) on the EU, US and UN lists "
+                             f"for the {len(e['subjects'])} name{'s' if len(e['subjects']) > 1 else ''} screened ({e['source']}).")
 
     if c["chpl"]:
         add("high", "Item", f"HS {hs} ({c['description'].lower()}) is a Tier {c['tier']} Common High Priority Item (EU battlefield item list).")
@@ -130,9 +173,9 @@ def _findings(ctx: dict) -> list[dict]:
         txt = (f"Exports vs pre-war: {a['multiplier']:.1f}× ({_money(a['post_mean'], unit)} a year since 2022 "
                f"vs {_money(a['baseline']['mean'], unit)} a year in 2017–21).")
         if a["z_max"] is not None:
-            above = "above" if a["z_max"] > a["threshold"] else "below"
-            txt += f" Peak year {a['z_max_year']}: Z-score {a['z_max']:.1f}, {above} the {a['threshold']:.1f} threshold."
-        add("high" if a["band"] in ("CRITICAL", "HIGH") else "medium", "Route", txt)
+            where = "far above" if a["z_max"] > a["threshold"] else "within"
+            txt += f" Peak year {a['z_max_year']}: {where} the pre-war range."
+        add({"CRITICAL": "high", "HIGH": "high", "MODERATE": "medium"}.get(a["band"], "info"), "Route", txt)
     if a["note"]:
         add("info", "Route", a["note"])
 
@@ -147,9 +190,10 @@ def _findings(ctx: dict) -> list[dict]:
     mo = ctx.get("monthly")
     if mo and mo["ytd"]["ratio"] is not None and mo["ytd"]["value"] > 0:
         y, r = mo["ytd"], mo["ytd"]["ratio"]
-        span = f"{MONTHS[0]}–{MONTHS[y['through_month'] - 1]}"
-        add("high" if r >= 2 else "info", "Monthly",
-            f"{y['year']} so far vs {y['reference_year']} ({span}): {r:.1f}×." + (" Still elevated." if r >= 2 else ""))
+        span = MONTHS[0] + (f"–{MONTHS[y['through_month'] - 1]}" if y["through_month"] > 1 else "")
+        # Same wording as the app: "2026 Jan–Aug vs 2021: -88%", with the flow it measures
+        add("high" if r >= 2 else "info", "Monthly exports",
+            f"Exports to {partner}, {y['year']} {span} vs {y['reference_year']}: {(r - 1) * 100:+.0f}%." + (" Still elevated." if r >= 2 else ""))
 
     uv = ctx.get("unit_values")
     if uv and uv["flag"]:
@@ -160,10 +204,10 @@ def _findings(ctx: dict) -> list[dict]:
     mi = ctx.get("mirror")
     if mi:
         if mi.get("gap") is not None and mi["gap"] >= 0.3:
-            add("medium", "Mirror", f"{mi['gap_year']}: {partner} reported receiving {mi['gap'] * 100:.0f}% less than "
+            add("medium", "Partner's figures", f"{mi['gap_year']}: {partner} reported receiving {mi['gap'] * 100:.0f}% less than "
                                     "Germany reported shipping. Possible re-routing or misdeclaration in transit.")
         if mi.get("onward_multiplier") is not None and mi["onward_multiplier"] >= 2:
-            add("high", "Mirror", f"{partner}'s own exports of HS {hs} to Russia since 2022: {mi['onward_multiplier']:.1f}× pre-war.")
+            add("high", "Partner's figures", f"{partner}'s own exports of HS {hs} to Russia since 2022: {mi['onward_multiplier']:.1f}× pre-war.")
 
     prof = a.get("jurisdiction_profile")
     if prof:
@@ -181,7 +225,7 @@ def _findings(ctx: dict) -> list[dict]:
 
 def _legal(ctx: dict) -> list[str]:
     e, c, v = ctx["entity"], ctx["classification"], ctx["verdict"]
-    lists = {li for s in e["subjects"] for m in s["matches"][:1] if s["status"] != "CLEAN" for li in m["lists"]}
+    lists = {li for s in e["subjects"] for m in _standing(s)[:1] if s["status"] != "CLEAN" for li in m["lists"]}
     out = []
     if lists & {"EU", "UN"}:
         out.append("EU/UN listing: making goods or funds available is prohibited (asset freeze, e.g. Art. 2 Reg. "
@@ -203,13 +247,16 @@ def _legal(ctx: dict) -> list[str]:
     if v["level"] >= 3:
         out.append("Directive (EU) 2024/1226 harmonises criminal penalties for sanctions violations across the EU, "
                    "including for companies; check the current AWG text when assessing exposure.")
+    if v["code"] == "STOP":
+        out.append("Escalation goes to the export control officer (Ausfuhrverantwortliche/r), the board member "
+                   "personally responsible for export compliance under BAFA practice.")
     return out
 
 
 def _edd(ctx: dict) -> list[str]:
     c, a, v = ctx["classification"], ctx["route"], ctx["verdict"]
     if v["code"] == "STOP":
-        return list(STOP_ACTIONS)
+        return list(v["actions"])
     steps = []
     if v["code"] == "HOLD":
         steps.append("Resolve the possible match first: compare dates of birth, addresses, registration numbers and "
@@ -280,6 +327,12 @@ def _route_label(scores: dict) -> str:
     return scores["route_band"].capitalize()
 
 
+def _recorded(r: dict) -> str:
+    """ " (recorded 2026-11-16 09:30 UTC by J. Doe)", or less when the time or the name is missing."""
+    parts = ([f"recorded {r['at'][:16].replace('T', ' ')} UTC"] if r.get("at") else []) + ([f"by {r['by']}"] if r.get("by") else [])
+    return f" ({' '.join(parts)})" if parts else ""
+
+
 def _markdown(m: dict) -> str:
     lines = [
         f"# {m['title']}",
@@ -292,12 +345,17 @@ def _markdown(m: dict) -> str:
         "",
         f"Route risk: **{m['scores']['route']}/100 ({_route_label(m['scores'])})**  |  "
         f"Sanctions screening: **{ENTITY_LABEL[m['scores']['entity_status']]}"
-        f"{'' if m['scores']['entity_status'] == 'CLEAN' else f' ({m["scores"]["entity"]}/100)'}**",
+        f"{'' if m['scores']['entity_status'] == 'CLEAN' else f' (best similarity {m["scores"]["best_similarity"]:.0f}%)'}**",
         "",
     ]
     if m.get("narrative"):
         lines += ["## Analyst assessment", m["narrative"], ""]
     lines += ["## Findings"] + [f"- **{f['area']}:** {f['text']}" for f in m["findings"]] + [""]
+    if m["reviews"]:
+        lines += ["## Match decisions"] + [
+            f"- {r['subject']} / {r['listed_name']} ({', '.join(r['lists'])}): "
+            f"{'Same entity' if r['decision'] == 'same' else 'Not the same entity'}. Reason: {r['reason']}{_recorded(r)}"
+            for r in m["reviews"]] + [""]
     lines += ["## Legal exposure"] + [f"- {x}" for x in m["legal"]] + [""]
     heading = "Required actions" if m["verdict"]["code"] == "STOP" else "Enhanced due diligence"
     lines += [f"## {heading}"] + [f"{i}. {x}" for i, x in enumerate(m["edd"], 1)] + [""]
@@ -312,11 +370,13 @@ async def build(ctx: dict) -> dict:
     digest = hashlib.sha1(json.dumps({k: q[k] for k in ("company", "hs", "exporter", "intermediary")},
                                      sort_keys=True).encode()).hexdigest()[:4].upper()
     findings = _findings(ctx)
-    subject = f"Export of HS {ctx['classification']['hs']} from {q['exporter_name']} to {q['company']}"
+    subject = f"Export of HS {_hs(ctx['classification']['hs'])} from {q['exporter_name']} to {q['company']}"
     if q["jurisdiction_name"] == q["intermediary_name"]:
         subject += f", {q['intermediary_name']}"
-    else:
+    elif q.get("jurisdiction"):
         subject += f" ({q['jurisdiction_name']}) through {q['intermediary_name']}"
+    else:
+        subject += f" through {q['intermediary_name']}"  # buyer country not given: say nothing rather than "unknown"
     memo = {
         "title": "Export compliance briefing",
         "ref": f"AEG-{today:%Y%m%d}-{digest}",
@@ -327,8 +387,12 @@ async def build(ctx: dict) -> dict:
         "bluf": f"{v['code']}: {v['title']}." + (" " + " ".join(v["notes"]) if v["notes"] else ""),
         "scores": {"route": ctx["route"]["score"], "route_band": ctx["route"]["band"],
                    "route_no_baseline": bool(ctx["route"].get("no_baseline")),
-                   "entity": ctx["entity"]["score"], "entity_status": ctx["entity"]["status"]},
+                   "entity": ctx["entity"]["score"], "entity_status": ctx["entity"]["status"],
+                   "best_similarity": ctx["entity"]["best_score"]},
         "findings": findings,
+        # The officer's decisions on listed matches, so the briefing is the record
+        "reviews": [{"subject": s["name"], "listed_name": m["name"], "lists": m["lists"], **m["review"]}
+                    for s in ctx["entity"]["subjects"] for m in s["matches"] if m.get("review")],
         "legal": _legal(ctx),
         "edd": _edd(ctx),
         "limitations": _limitations(ctx),

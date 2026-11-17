@@ -33,12 +33,13 @@ export function StatusBadge({ tone, children, className, solid, large }: {
   const c = toneVar[tone];
   const Icon = ICONS[tone];
   // White on the critical red is 4.8:1; the lighter serious orange needs dark ink (7.2:1)
-  const ink = tone === "critical" ? "#ffffff" : "#111111";
+  const ink = tone === "critical" ? "var(--on-critical)" : "var(--on-serious)";
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap border font-semibold",
-        large ? "h-9 px-3 text-[17px]" : "h-6 px-2 text-[15px]",
+        // Wraps rather than overflow when the reader's text size is large
+        "inline-flex min-w-0 max-w-full items-center gap-1.5 whitespace-normal border text-left font-semibold",
+        large ? "min-h-9 px-3 py-1 text-base" : "min-h-6 px-2 py-0.5 text-sm",
         !solid && "text-foreground",
         className,
       )}
@@ -47,8 +48,8 @@ export function StatusBadge({ tone, children, className, solid, large }: {
         background: `color-mix(in srgb, ${c} 12%, transparent)`,
       }}
     >
-      {solid ? <Icon weight="fill" aria-hidden className={cn("shrink-0", large ? "size-[18px]" : "size-3.5")} />
-        : <ToneIcon tone={tone} className={large ? "size-[18px]" : "size-3.5"} />}
+      {solid ? <Icon weight="fill" aria-hidden className={cn("shrink-0", large ? "size-4.5" : "size-3.5")} />
+        : <ToneIcon tone={tone} className={large ? "size-4.5" : "size-3.5"} />}
       {Children.map(children, sentenceCase)}
     </span>
   );

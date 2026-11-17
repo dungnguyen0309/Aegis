@@ -4,14 +4,15 @@ import { ArrowsOutIcon, EyeIcon } from "@phosphor-icons/react";
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { Frame3D, ToolButton, type Tip, tipAt, usePicking, useStage } from "@/components/three/frame";
+import { VIEW_H } from "@/components/three/lazy";
 import { StatusBadge } from "@/components/status";
-import { Flag, regionName } from "@/components/visuals";
-import { bandTone, money, times } from "@/lib/format";
+import { Flag, regionName, To } from "@/components/visuals";
+import { bandTone, change, money, times } from "@/lib/format";
 import { useTheme } from "@/lib/theme";
 import { canvasTexture, cssVar, disposeTree, flagSrc, loadImage, pageFont, themeColor } from "@/lib/three-stage";
 import type { Radar, RadarCell } from "@/lib/types";
 
-export type SkylineCell = RadarCell & { hs: string; description: string; tier: string };
+type SkylineCell = RadarCell & { hs: string; description: string; tier: string };
 type Row = Radar["rows"][number];
 
 const CELL = 0.1; // along the items (x)
@@ -151,7 +152,7 @@ export function Skyline3D({ data, rows, byTier, on, onHover, onAssess }: {
 
     const geo = new THREE.BoxGeometry(BAR, 1, BAR_Z).translate(0, 0.5, 0);
     const mesh = new THREE.InstancedMesh(geo, new THREE.MeshLambertMaterial(), n * m);
-    const card = themeColor("--card").convertLinearToSRGB(), crit = themeColor("--status-critical").convertLinearToSRGB();
+    const card = themeColor("--card").convertLinearToSRGB(), crit = themeColor("--heat").convertLinearToSRGB();
     const colors: THREE.Color[] = [];
     const heights: number[] = [];
     const mat = new THREE.Matrix4();
@@ -228,16 +229,16 @@ export function Skyline3D({ data, rows, byTier, on, onHover, onAssess }: {
       onHover(c);
       setTip(tipAt(e, stage, (
         <>
-          <div className="flex items-center gap-1.5 font-bold">HS {c.hs} → <Flag code={c.partner} size={14} /> {regionName(c.partner)}</div>
+          <div className="flex items-center gap-1.5 font-bold">HS {c.hs} <To /> <Flag code={c.partner} size={14} /> {regionName(c.partner)}</div>
           <div className="text-muted-foreground">{c.description}</div>
           <div className="mt-1 flex items-center gap-2">
             <StatusBadge tone={bandTone[c.band]}>{c.band}</StatusBadge>
-            <span className="text-[17px] font-bold">{c.score}</span><span className="text-muted-foreground">/ 100</span>
+            <span className="text-base font-bold">{c.score}</span><span className="text-muted-foreground">/ 100</span>
           </div>
           <div className="mt-1">
             {c.multiplier !== null ? `Exports vs pre-war: ${times(c.multiplier)}` : c.emergent ? "Exports vs pre-war: New flow" : "No baseline"}
           </div>
-          {c.ytd !== null && data.latest_month && <div>{data.latest_month.slice(0, 4)} so far vs 2021: {times(c.ytd)}</div>}
+          {c.ytd !== null && data.latest_month && <div>{data.latest_month.slice(0, 4)} so far vs 2021: {change(c.ytd)}</div>}
           <div className="text-muted-foreground">{data.years.at(-1)} exports: {money(c.latest)}</div>
         </>
       )));
@@ -265,7 +266,7 @@ export function Skyline3D({ data, rows, byTier, on, onHover, onAssess }: {
   };
 
   return (
-    <Frame3D hostRef={hostRef} stageRef={stageRef} failed={failed} tip={tip} className="h-[280px] bg-card sm:h-[460px]"
+    <Frame3D hostRef={hostRef} stageRef={stageRef} failed={failed} tip={tip} className={`${VIEW_H.skyline} bg-card`}
       label={`3D skyline of route risk for ${rows.length} items × ${m} transit countries, exporter ${data.exporter_name}`}
       hint="Drag to rotate · click a bar to assess"
       tools={<>

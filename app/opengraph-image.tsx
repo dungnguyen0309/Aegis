@@ -20,7 +20,7 @@ export default function OpenGraphImage() {
             <circle cx="16" cy="20.5" r="1.6" fill="#111318" />
             <circle cx="21.2" cy="11.8" r="2.3" fill="#d03b3b" />
           </svg>
-          <div style={{ fontSize: 96, fontWeight: 700, letterSpacing: 22 }}>AEGIS</div>
+          <div style={{ fontSize: 96, fontWeight: 700 }}>Aegis</div>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
           <div style={{ fontSize: 46, fontWeight: 600, lineHeight: 1.2 }}>Open-Source Trade Intelligence &amp; Dual-Use Sanctions Radar</div>

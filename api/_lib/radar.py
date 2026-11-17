@@ -6,6 +6,8 @@ from functools import lru_cache
 
 from . import anomaly, config, hs_codes, trade
 
+SMALL_BASE = 100_000  # pre-war yearly average, in the series unit
+
 
 def _ytd_ratio(exporter: str, partner: str, hs: str) -> float | None:
     data = trade.bundled_monthly()
@@ -37,6 +39,8 @@ def matrix(exporter: str) -> dict | None:
                 "score": a["score"],
                 "band": a["band"],
                 "multiplier": a["multiplier"],
+                # Under €100k a year before the war, a ratio overstates the change: ranked after the others
+                "small_base": a["multiplier"] is not None and a["baseline"]["mean"] < SMALL_BASE,
                 "emergent": a["emergent"],
                 "diversion": a["diversion_pattern"],
                 "latest": series["values"][-1],
@@ -45,7 +49,7 @@ def matrix(exporter: str) -> dict | None:
             })
         rows.append({**item, "max": max(c["score"] for c in cells), "cells": cells})
     flat = [{"hs": r["hs"], "description": r["description"], "tier": r["tier"], **c} for r in rows for c in r["cells"]]
-    top = sorted(flat, key=lambda c: (-c["score"], -(c["latest"] or 0)))[:12]
+    top = sorted(flat, key=lambda c: (c["small_base"], -c["score"], -(c["latest"] or 0)))[:12]
     counts = {b: sum(c["band"] == b for c in flat) for b in ("CRITICAL", "HIGH", "MODERATE", "LOW")}
     months = (trade.bundled_monthly() or {}).get("meta", {}).get("months", [])
     return {

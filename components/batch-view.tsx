@@ -8,10 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PageHeader, Panel } from "@/components/panel";
 import { ProductArt } from "@/components/product-art";
-import { sentenceCase, StatusBadge } from "@/components/status";
+import { sentenceCase, StatusBadge, VerdictBadge } from "@/components/status";
 import { CompanyMark, Flag } from "@/components/visuals";
 import { api } from "@/lib/api";
-import { entityLabel, entityTone, verdictSolid, verdictTone, routeStatus, NONE } from "@/lib/format";
+import { entityLabel, entityTone, routeStatus, NONE } from "@/lib/format";
 import { useIntent } from "@/lib/use-intent";
 import { cn } from "@/lib/utils";
 import type { BatchResult, BatchRowIn, BatchRowOut, VerdictCode } from "@/lib/types";
@@ -189,13 +189,13 @@ export function BatchView({ state, onState, onAssess, onPrefetch }: {
           <input ref={file} type="file" accept=".csv,text/csv,text/plain" className="hidden"
             onChange={async (e) => { const f = e.target.files?.[0]; if (f) setText(await f.text()); e.target.value = ""; }} />
           <Button variant="outline" onClick={() => file.current?.click()}><UploadSimpleIcon /> Upload CSV</Button>
-          {/* Only on an empty list, so it never replaces pasted rows */}
-          {!text.trim() && <Button variant="outline" onClick={() => setText(SAMPLE)}><ListChecksIcon /> Load sample</Button>}
           <Button onClick={run} disabled={loading || rows.length === 0}>
             {loading ? <SpinnerGapIcon className="animate-spin" /> : <ListChecksIcon />}
             {loading ? `Screening ${rows.length} buyer${rows.length === 1 ? "" : "s"}…` : rows.length ? `Screen ${rows.length} buyer${rows.length === 1 ? "" : "s"}` : "Screen buyers"}
           </Button>
           {loading && <Button variant="ghost" onClick={() => ctrl.current?.abort()}><XIcon /> Cancel</Button>}
+          {/* Only on an empty list, so it never replaces pasted rows; after the Screen button, so its going shifts nothing */}
+          {!text.trim() && <Button variant="outline" onClick={() => setText(SAMPLE)}><ListChecksIcon /> Load sample</Button>}
           {/* Why the button is off */}
           {!loading && rows.length === 0 && <span className="text-sm text-muted-foreground">Add at least one row to screen.</span>}
           {error && <span role="alert" className="text-sm text-destructive">{error}</span>}
@@ -262,7 +262,7 @@ export function BatchView({ state, onState, onAssess, onPrefetch }: {
               <button key={k} type="button" onClick={() => setOnly(only === k ? null : k)} aria-pressed={only === k}
                 title={only === k ? "Show all rows" : `Show only ${sentenceCase(k)}`}
                 className={cn("inline-flex items-center transition-[filter] pointer-coarse:min-h-11", only && only !== k && "grayscale hover:grayscale-0")}>
-                <StatusBadge tone={verdictTone[k]} solid={verdictSolid(k)}>{`${result.summary[k]} ${k}`}</StatusBadge>
+                <VerdictBadge code={k} className="whitespace-nowrap">{`${result.summary[k]} ${k}`}</VerdictBadge>
               </button>
             ))}
             {only && (
@@ -287,7 +287,7 @@ export function BatchView({ state, onState, onAssess, onPrefetch }: {
                     <span className="truncate font-bold">{r.company}</span>
                     {r.country && <Flag code={r.country} size={14} />}
                   </div>
-                  <StatusBadge tone={verdictTone[r.verdict]} solid={verdictSolid(r.verdict)}>{r.verdict}</StatusBadge>
+                  <VerdictBadge code={r.verdict} className="shrink-0 whitespace-nowrap" />
                 </div>
                 <Issues r={r} />
                 <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-sm">
@@ -319,7 +319,7 @@ export function BatchView({ state, onState, onAssess, onPrefetch }: {
               <TableBody>
                 {shown.map((r, i) => (
                   <TableRow key={i}>
-                    <TableCell><StatusBadge tone={verdictTone[r.verdict]} solid={verdictSolid(r.verdict)}>{r.verdict}</StatusBadge></TableCell>
+                    <TableCell><VerdictBadge code={r.verdict} className="whitespace-nowrap" /></TableCell>
                     <TableCell className="whitespace-normal">
                       <div className="flex items-center gap-2">
                         <CompanyMark name={r.company} size={24} flagged={r.entity_status !== "CLEAN"} />

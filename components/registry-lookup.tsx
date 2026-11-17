@@ -38,7 +38,7 @@ export function RegistryLookup({ name, country }: { name: string; country: strin
           <div className="text-base font-bold">LEI register</div>
           {current.data.flags.map((f) => (
             <p key={f.text} className="flex items-start gap-2 text-sm">
-              <ToneIcon tone={f.severity === "critical" ? "critical" : f.severity === "high" ? "critical" : "serious"} className="mt-0.5 size-4" />
+              <ToneIcon tone={f.severity === "medium" ? "warning" : "serious"} className="mt-0.5 size-4" />
               {f.text}
             </p>
           ))}

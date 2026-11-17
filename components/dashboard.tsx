@@ -18,7 +18,7 @@ import { EntityPanel, LegalPanel, type OnReview } from "@/components/result-pane
 import { RouteScene } from "@/components/route-scene";
 import { Tour } from "@/components/tour";
 import { api, ApiUnavailable, InvalidInput } from "@/lib/api";
-import { monthLabel } from "@/lib/format";
+import { hsCode, monthLabel } from "@/lib/format";
 import { INTERMEDIARY_CODES } from "@/lib/corridors";
 import { usePersisted, usePersistedText } from "@/lib/persisted";
 import type { Assessment, BatchRowOut, Memo, Reference, Review, Weights } from "@/lib/types";
@@ -156,9 +156,11 @@ export function Dashboard() {
       setOffline(false);
       setMemo(null);
       void fetchMemo(f, w, id);
-      // On narrow screens the form sits below the results: bring the new result back into view
-      if (reveal && window.matchMedia(BELOW_LG).matches) {
-        requestAnimationFrame(() => document.querySelector('[data-tour="verdict"]')?.scrollIntoView({ behavior: scrollMode(), block: "start" }));
+      // A new assessment opens at the top of its result: below the form on narrow screens, the page top on wide ones
+      if (reveal) {
+        requestAnimationFrame(() => window.matchMedia(BELOW_LG).matches
+          ? document.querySelector('[data-tour="verdict"]')?.scrollIntoView({ behavior: scrollMode(), block: "start" })
+          : window.scrollTo({ top: 0, behavior: scrollMode() }));
       }
     } catch (e) {
       if (id !== seq.current) return;
@@ -225,6 +227,7 @@ export function Dashboard() {
     // No buyer of the user's own yet: ask for one rather than screen an example buyer on this route
     if (exampleBuyer(lastRun.current)) openAt({ ...radarPatch(hs, partner, exporter), company: "", jurisdiction: "", ubos: "" }, "company");
     else {
+      setSection("overview");
       setKeptBuyer(rerun(radarPatch(hs, partner, exporter)));
       window.scrollTo({ top: 0, behavior: scrollMode() });
     }
@@ -236,6 +239,7 @@ export function Dashboard() {
     const missing = !patch.hs ? "hs" : !patch.intermediary ? "via" : null;
     if (missing) openAt(patch, missing);
     else {
+      setSection("overview");
       rerun(patch);
       window.scrollTo({ top: 0, behavior: scrollMode() });
     }
@@ -386,6 +390,8 @@ export function Dashboard() {
   const dimStale = stale && !loading && "opacity-60";
   const partner = a?.query.intermediary_name ?? "";
   const exporterName = a?.query.exporter_name ?? "";
+  // No cartoon of the shipment beside a Stop or Hold: the deal must not go ahead
+  const scene = a?.verdict.code !== "STOP" && a?.verdict.code !== "HOLD";
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -411,6 +417,8 @@ export function Dashboard() {
             <QueryPanel reference={reference} form={form} setForm={(f) => { setForm(f); setFormOpen(true); }}
               onRun={(f) => {
                 setFormOpen(false);
+                // A new assessment or example opens on Overview, not on the tab the last one was left at
+                setSection("overview");
                 run(f, weights, true);
                 // On phones the form (and the focused Run button) is hidden: give focus to the result
                 if (window.matchMedia(BELOW_LG).matches) document.getElementById("content")?.focus({ preventScroll: true });
@@ -465,7 +473,7 @@ export function Dashboard() {
                 <p role="status" className={stale && !loading ? "flex items-center gap-2 callout-warning border px-4 py-2 text-sm" : "sr-only"}>
                   {stale && !loading && <>
                     <WarningIcon className="size-4 shrink-0 text-warning-ink" aria-hidden />
-                    Form changed. This result is for {a.query.company}, HS {a.classification.hs.slice(0, 4)}.{a.classification.hs.slice(4)}, {exporterName} to {partner}. Run assessment to update.
+                    Form changed. This result is for {a.query.company}, HS {hsCode(a.classification.hs)}, {exporterName} to {partner}. Run assessment to update.
                   </>}
                 </p>
                 <div className={cn("transition-opacity", dimStale)}>
@@ -513,7 +521,7 @@ export function Dashboard() {
                     <RouteSection a={a} reference={reference} onWeights={reweigh}
                       onCalculator={() => { setView("calc"); window.scrollTo({ top: 0 }); }} />
                     {/* Context for the route, after the evidence and folded away: Overview keeps to the findings */}
-                    <More label="Show freight corridors and shipment illustration" holds="map scene">
+                    <More label={scene ? "Show freight corridors and shipment illustration" : "Show freight corridors"} holds={scene ? "map scene" : "map"}>
                     <Panel title="Freight corridors" tour="map"
                       action={<>{motionSwitch}<Segmented value={mapView} onChange={setMapView} options={[
                         { value: "globe", label: "Globe", icon: <GlobeHemisphereEastIcon className="size-4" /> },
@@ -522,14 +530,14 @@ export function Dashboard() {
                       <CorridorPanel view={mapView} playing={motion === "play"} exporter={a.query.exporter} exporterName={exporterName} flows={a.flows}
                         intermediary={a.query.intermediary} intermediaryName={partner} onSelect={(code) => rerun({ intermediary: code })} />
                     </Panel>
-                    <Panel title="Shipment illustration"
+                    {scene && <Panel title="Shipment illustration"
                       bodyClassName="px-2 pb-4 pt-3 sm:px-4" tour="scene"
                       action={<>{motionSwitch}<Segmented value={sceneView} onChange={setSceneView} options={[
                         { value: "3d", label: "3D", icon: <CubeIcon className="size-4" /> },
                         { value: "flat", label: "Flat", icon: <ImageIcon className="size-4" /> },
                       ]} /></>}>
                       <RouteScene a={a} view={sceneView} playing={motion === "play"} />
-                    </Panel>
+                    </Panel>}
                     </More>
                   </ViewBoundary>
                 )}

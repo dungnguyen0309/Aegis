@@ -29,7 +29,7 @@ export function markTexture(name: string, flagged: boolean, px = 256): THREE.Can
   ctx.textAlign = "center";
   ctx.fillText(text, 20, 25.5);
   if (flagged) {
-    ctx.strokeStyle = cssVar("--status-critical");
+    ctx.strokeStyle = cssVar("--status-serious");
     ctx.lineWidth = 2.5;
     ctx.beginPath();
     ctx.arc(20, 20, 18.6, 0, Math.PI * 2);
@@ -77,7 +77,7 @@ export function personTexture(flagged: boolean, px = 192): THREE.CanvasTexture {
   ctx.ellipse(20, 32, 11, 8, 0, Math.PI, 0);
   ctx.fill();
   if (flagged) {
-    ctx.strokeStyle = cssVar("--status-critical");
+    ctx.strokeStyle = cssVar("--status-serious");
     ctx.lineWidth = 2.5;
     ctx.beginPath();
     ctx.arc(20, 20, 18.6, 0, Math.PI * 2);

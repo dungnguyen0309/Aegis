@@ -58,22 +58,21 @@ export function RouteSection({ a, reference, onWeights, onCalculator }: {
         {a.route.note && <p className="mt-3 text-sm text-muted-foreground">{a.route.note}</p>}
       </Panel>
 
-      <div className="grid gap-4 xl:grid-cols-[1fr_1.3fr]">
-        <Panel title="Route risk breakdown" tour="score">
-          <ScoreBreakdown r={a.route} defaults={reference?.weights ?? {}} onWeights={onWeights} />
-          <Button variant="outline" size="sm" className="mt-4 w-full" onClick={onCalculator}>
-            <CalculatorIcon /> Open in calculator
-          </Button>
-        </Panel>
-        <Panel title={`Direct exports to Russia vs ${partner}`}>
-          <DisplacementChart route={a.route} partner={partner} partnerCode={a.query.intermediary} unit={a.series.unit} />
-          {a.route.diversion_pattern && (
-            <p className="mt-2 text-sm text-muted-foreground">
-              Direct exports to Russia fell while exports to {partner} rose: consistent with diversion.
-            </p>
-          )}
-        </Panel>
-      </div>
+      {/* Stacked: the breakdown is far taller than the chart, so side by side left an empty column */}
+      <Panel title="Route risk breakdown" tour="score">
+        <ScoreBreakdown r={a.route} defaults={reference?.weights ?? {}} onWeights={onWeights} />
+        <Button variant="outline" size="sm" className="mt-4 max-sm:w-full" onClick={onCalculator}>
+          <CalculatorIcon /> Open in calculator
+        </Button>
+      </Panel>
+      <Panel title={`Direct exports to Russia vs ${partner}`}>
+        <DisplacementChart route={a.route} partner={partner} partnerCode={a.query.intermediary} unit={a.series.unit} />
+        {a.route.diversion_pattern && (
+          <p className="mt-2 text-sm text-muted-foreground">
+            Direct exports to Russia fell while exports to {partner} rose: consistent with diversion.
+          </p>
+        )}
+      </Panel>
 
       {/* Detail for defending the score, not for today's decision: folded */}
       <More label="Show monthly exports and cross-checks" holds="monthly mirror">

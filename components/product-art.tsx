@@ -115,7 +115,7 @@ const ART: Record<string, ReactNode> = {
           <circle cx={x} cy={y} r={1.8} fill={DARK} /></g>
       ))}
       <rect x={16} y={16} width={8} height={8} rx={2} fill={BODY} />
-      <circle cx={20} cy={20} r={1.5} fill="var(--status-critical)" />
+      <circle cx={20} cy={20} r={1.5} fill="var(--series-2)" />
     </g>
   ),
   optics: (
@@ -132,7 +132,7 @@ const ART: Record<string, ReactNode> = {
       <circle cx={20} cy={20} r={14} fill="none" stroke={METAL} strokeWidth={2} />
       <ellipse cx={20} cy={20} rx={14} ry={5} fill="none" stroke={METAL_D} strokeWidth={1.4} />
       <ellipse cx={20} cy={20} rx={5} ry={14} fill="none" stroke={METAL_D} strokeWidth={1.4} />
-      <path d="M20 9 L23 20 L20 31 L17 20 Z" fill="var(--status-critical)" />
+      <path d="M20 9 L23 20 L20 31 L17 20 Z" fill="var(--series-2)" />
       <path d="M20 20 L23 20 L20 31 L17 20 Z" fill={DARK} />
     </g>
   ),

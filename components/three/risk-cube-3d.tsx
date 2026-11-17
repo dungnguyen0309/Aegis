@@ -4,9 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { Frame3D, type Tip, tipAt, usePicking, useStage } from "@/components/three/frame";
 import { VIEW_H } from "@/components/three/lazy";
-import { StatusBadge } from "@/components/status";
+import { StatusBadge, VerdictBadge } from "@/components/status";
 import { Flag, regionName } from "@/components/visuals";
-import { entityTone, toneVar, verdictTone, entityLabel } from "@/lib/format";
+import { entityTone, hsCode, toneVar, verdictTone, entityLabel } from "@/lib/format";
 import { useTheme } from "@/lib/theme";
 import { canvasTexture, cssVar, disposeTree, pageFont } from "@/lib/three-stage";
 import type { BatchRowOut } from "@/lib/types";
@@ -187,13 +187,13 @@ export function RiskCube3D({ rows, onAssess }: { rows: BatchRowOut[]; onAssess?:
       setTip(r ? tipAt(e, stage, (
         <>
           <div className="flex items-center gap-1.5 font-bold">{r.company}{r.country && <Flag code={r.country} size={14} />}</div>
-          <div className="mt-1"><StatusBadge tone={verdictTone[r.verdict]}>{r.verdict}</StatusBadge></div>
+          <div className="mt-1"><VerdictBadge code={r.verdict} /></div>
           <div className="mt-1 flex items-center gap-1.5">
             <StatusBadge tone={entityTone[r.entity_status]}>{entityLabel[r.entity_status]}</StatusBadge>
             <span>{r.best_similarity !== null ? `${r.best_similarity.toFixed(0)}% · ${r.best_match}` : "no listed name"}</span>
           </div>
           <div>Route risk: {r.route_score !== null && r.intermediary ? `${r.route_score} / 100 · ${regionName(r.intermediary)}` : "not checked (no HS code or route)"}</div>
-          <div>Item: {r.hs ? `HS ${r.hs} · ${r.chpl_tier ? `Tier ${r.chpl_tier}` : "not on item list"}` : "no HS code"}</div>
+          <div>Item: {r.hs ? `HS ${hsCode(r.hs)} · ${r.chpl_tier ? `Tier ${r.chpl_tier}` : "not on item list"}` : "no HS code"}</div>
         </>
       )) : null);
     },

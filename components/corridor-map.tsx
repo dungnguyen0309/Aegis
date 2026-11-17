@@ -228,7 +228,7 @@ export function CorridorMap({ exporter, exporterName, intermediary, intermediary
             return (
               <g key={r.id} transform={`translate(${x},${y})`}>
                 <circle r={7} fill="var(--card)" stroke={LEG_COLOR.restricted} strokeWidth={1.5} />
-                <path d="M-3 -3 L3 3 M3 -3 L-3 3" stroke="var(--status-critical)" strokeWidth={1.8} strokeLinecap="round" />
+                <path d="M-3 -3 L3 3 M3 -3 L-3 3" stroke="var(--foreground)" strokeWidth={1.8} strokeLinecap="round" />
               </g>
             );
           })}

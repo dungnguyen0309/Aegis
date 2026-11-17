@@ -6,7 +6,7 @@ import { Segmented } from "@/components/corridor-panel";
 import { Stat } from "@/components/analysis-panels";
 import { PageHeader, Panel } from "@/components/panel";
 import { ScoreBreakdown } from "@/components/result-panels";
-import { StatusBadge } from "@/components/status";
+import { StatusBadge, VerdictBadge } from "@/components/status";
 import { AnomalyChart } from "@/components/trade-charts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Flag } from "@/components/visuals";
 import { api } from "@/lib/api";
-import { bandTone, money, pct, times, verdictTone, zfmt, NONE } from "@/lib/format";
+import { bandTone, money, pct, times, zfmt, NONE } from "@/lib/format";
 import type { Assessment, CalcResult, EntityStatus, Reference, Unit, Weights } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -179,7 +179,7 @@ export function CalculatorView({ reference, from, example }: { reference: Refere
           {r && result && (
             <div className={cn("flex flex-wrap items-center gap-x-3 gap-y-1.5 border border-border bg-background px-3 py-2 text-sm transition-opacity lg:hidden", busy && "opacity-70")}>
               <span className="inline-flex items-center gap-1.5">Route risk <span className="font-bold">{r.score}/100</span> <StatusBadge tone={bandTone[r.band]}>{r.band}</StatusBadge></span>
-              <span className="inline-flex items-center gap-1.5">Hypothetical action <StatusBadge tone={verdictTone[result.verdict.code]}>{result.verdict.code}</StatusBadge></span>
+              <span className="inline-flex items-center gap-1.5">Hypothetical action <VerdictBadge code={result.verdict.code} /></span>
             </div>
           )}
 
@@ -243,7 +243,7 @@ export function CalculatorView({ reference, from, example }: { reference: Refere
                   </div>
                   <div className="flex flex-col items-start gap-1 sm:items-end">
                     <span className="text-sm text-muted-foreground">Action</span>
-                    <StatusBadge tone={verdictTone[result.verdict.code]} className="h-8 px-3 text-sm">{result.verdict.code}</StatusBadge>
+                    <VerdictBadge code={result.verdict.code} className="h-8 px-3 text-sm" />
                   </div>
                 </div>
                 <div className="border-t border-border px-5 py-3">

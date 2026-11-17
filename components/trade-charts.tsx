@@ -105,7 +105,7 @@ export function AnomalyChart({ route, partner, unit }: { route: Route; partner: 
                     <Row k="SD above pre-war" v={zfmt(p.z)} />
                     {p.flagged && (
                       <div className="mt-1 flex items-center gap-1 text-foreground">
-                        <ToneIcon tone="critical" className="size-3" /> Unusual year
+                        <ToneIcon tone="serious" className="size-3" /> Unusual year
                       </div>
                     )}
                   </Tip>
@@ -255,7 +255,7 @@ export function SeriesTable({ route, unit }: { route: Route; unit: Unit }) {
               {p.p_value === null ? NONE : p.p_value < 0.001 ? "<0.001" : p.p_value.toFixed(3)}
             </TableCell>
             <TableCell className="text-right">{p.russia === null ? NONE : money(p.russia, unit, 2)}</TableCell>
-            <TableCell>{p.flagged && <ToneIcon tone="critical" className="size-3.5" />}</TableCell>
+            <TableCell>{p.flagged && <ToneIcon tone="serious" className="size-3.5" />}</TableCell>
           </TableRow>
         ))}
       </TableBody>

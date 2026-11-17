@@ -8,7 +8,7 @@ export type CorridorMode = "sea" | "rail" | "road" | "air";
 export type Leg = "inbound" | "onward" | "restricted";
 
 /** Line colours by leg (theme tokens), shared by the flat map, the legend and the globe. */
-export const LEG_COLOR = { inbound: "var(--series-1)", onward: "var(--status-critical)", restricted: "var(--chart-baseline)" } as const;
+export const LEG_COLOR = { inbound: "var(--series-1)", onward: "var(--status-serious)", restricted: "var(--chart-baseline)" } as const;
 
 export interface Corridor {
   id: string;

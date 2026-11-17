@@ -87,6 +87,8 @@ def test_listed_entity_stops_the_deal():
                                        "hs": "854231", "intermediary": "AM"}).json()
     assert m["edd"] == a["verdict"]["actions"]  # a Stop briefing lists only the stop steps
     assert "## Required actions" in m["markdown"] and "end-use statement" not in m["markdown"]
+    # The bottom line names the action in sentence case, like the app's badge
+    assert m["bluf"].startswith("Stop: ") and "STOP" not in m["markdown"]
     # The German job title stays out of the steps and appears once, under Legal exposure
     assert not any("Ausfuhr" in s for s in m["edd"]) and any("Ausfuhrverantwortliche" in x for x in m["legal"])
 
@@ -118,6 +120,7 @@ def test_memo_sections():
                                        "hs": "854239", "intermediary": "KG"}).json()
     assert m["engine"] == "rules"
     assert m["findings"] and m["legal"] and m["edd"]
+    assert m["bluf"].startswith(f"{m['verdict']['code'].capitalize()}: ") and not m["bluf"].split(":")[0].isupper()
     # A clean buyer reads as neither a match nor a possible match
     assert any(f["text"].startswith("No match and no possible match") and "for the 1 name screened" in f["text"]
                for f in m["findings"]), m["findings"]

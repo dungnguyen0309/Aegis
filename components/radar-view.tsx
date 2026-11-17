@@ -14,7 +14,7 @@ import { ProductArt } from "@/components/product-art";
 import { StatusBadge, ToneIcon } from "@/components/status";
 import { Flag, regionName, To } from "@/components/visuals";
 import { api, ApiUnavailable } from "@/lib/api";
-import { bandTone, change, money, times, ytdLabel, NONE } from "@/lib/format";
+import { bandTone, change, hsCode, money, times, ytdLabel, NONE } from "@/lib/format";
 import { usePersisted } from "@/lib/persisted";
 import type { Band, Radar, RadarCell } from "@/lib/types";
 import { readRadar, writeRadar, type RadarFilters, type RadarKey } from "@/lib/url-state";
@@ -469,7 +469,7 @@ export function RadarView({ onAssess, onPrefetch, tiers }: {
   const chips: { k: Facet; v: string; text: string }[] = FACETS.flatMap((k) => filters[k].map((v) => ({
     k, v,
     text: k === "risk" ? word(v as Band) : k === "tier" ? `Tier ${v}` : k === "to" ? regionName(v)
-      : k === "signal" ? SIGNALS.find((s) => s.key === v)?.label ?? v : `HS ${v}`,
+      : k === "signal" ? SIGNALS.find((s) => s.key === v)?.label ?? v : `HS ${hsCode(v)}`,
   })));
 
   return (
@@ -548,7 +548,7 @@ export function RadarView({ onAssess, onPrefetch, tiers }: {
                         <div className="min-w-0 flex-1">
                           <div className="line-clamp-2 text-base font-bold leading-snug" title={c.description}>{c.description}</div>
                           <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                            <span>HS {c.hs}</span> <To /> <Flag code={c.partner} size={14} /> <span className="text-foreground">{regionName(c.partner)}</span>
+                            <span>HS {hsCode(c.hs)}</span> <To /> <Flag code={c.partner} size={14} /> <span className="text-foreground">{regionName(c.partner)}</span>
                           </div>
                           <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
                             <StatusBadge tone={bandTone[c.band]}>{`${c.score} ${word(c.band)}`}</StatusBadge>
@@ -609,7 +609,7 @@ export function RadarView({ onAssess, onPrefetch, tiers }: {
                             <div className="flex items-center gap-3">
                               <ProductArt hs={detail.hs} size={56} />
                               <div>
-                                <div className="text-lg font-bold">HS {detail.hs}</div>
+                                <div className="text-lg font-bold">HS {hsCode(detail.hs)}</div>
                                 <div className="text-sm text-muted-foreground">{detail.description}</div>
                               </div>
                             </div>

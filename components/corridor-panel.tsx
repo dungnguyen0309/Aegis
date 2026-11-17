@@ -153,7 +153,7 @@ export function CorridorPanel({ exporter, exporterName, intermediary, intermedia
               <h3 className="mb-2 flex items-center gap-1.5 text-base font-bold">
                 {g.leg === "inbound" && <Flag code={exporter} size={14} />}
                 {g.leg === "onward" && <Flag code={intermediary} size={14} />}
-                {g.leg === "restricted" && <ProhibitIcon className="size-3.5 text-destructive" />}
+                {g.leg === "restricted" && <ProhibitIcon className="size-3.5 text-foreground" />}
                 {g.title}
               </h3>
               <ul className="space-y-2">

@@ -31,7 +31,10 @@ function MemoDocument({ m }: { m: Memo }) {
       <h3 className="mt-4 text-xl font-bold">{m.title}</h3>
       <p className="mt-1 text-paper-muted"><b className="text-paper-ink">Subject:</b> {m.subject}</p>
 
-      <div className="mt-4 border px-3 py-2" style={{ borderColor: m.verdict.level >= 3 ? "var(--stop-ink)" : m.verdict.level === 2 ? "var(--edd-ink)" : "var(--ok-ink)" }}>
+      <div className="mt-4 border px-3 py-2" style={{
+        // Red for Stop (level 4) only; Standard is neutral ink, never a green clearance
+        borderColor: m.verdict.level >= 4 ? "var(--stop-ink)" : m.verdict.level === 3 ? "var(--edd-ink)" : m.verdict.level === 2 ? "var(--paper-medium)" : "var(--paper-muted)",
+      }}>
         <div className="text-base font-bold text-paper-muted">Bottom line</div>
         <p className="font-semibold">{m.bluf}</p>
         <p className="mt-1 text-sm text-paper-muted">
@@ -156,7 +159,14 @@ const AREA_SECTION: Record<string, Section> = { Counterparty: "counterparty", Go
 const AREA_FOLD: Record<string, string> = { "Monthly exports": "monthly", "Partner's figures": "mirror", Price: "mirror" };
 const SEVERITY_TONE = severityTone;
 
-/** The briefing's findings, each opening the tab with its evidence. Overview leads with these. */
+/** Findings the summary tiles above already show: a clean screening, the item listing, exports vs pre-war and this
+ *  year's monthly change (texts from api/_lib/memo.py). A match or possible match blocks the shipment and always shows. */
+const onTiles = (f: Memo["findings"][number]) =>
+  f.area === "Item" || f.area === "Monthly exports" || (f.area === "Buyer" && f.severity === "info")
+  || (f.area === "Route" && /^(Exports vs pre-war|New flow):/.test(f.text));
+
+/** The briefing's findings that the summary tiles do not show, each opening the tab with its evidence.
+ *  Every finding stays on its tab and in the briefing. */
 export function KeyFindings({ memo, loading, error, onRetry, onSection }: {
   memo: Memo | null;
   loading: boolean;
@@ -164,12 +174,15 @@ export function KeyFindings({ memo, loading, error, onRetry, onSection }: {
   onRetry: () => void;
   onSection: (s: Section) => void;
 }) {
+  const findings = memo?.findings.filter((f) => !onTiles(f)) ?? [];
   return (
     <Panel title="Findings" bodyClassName="p-0">
-      {memo ? (
+      {memo && !findings.length ? (
+        <p className="px-5 py-4 text-sm text-muted-foreground">No findings beyond the figures above.</p>
+      ) : memo ? (
         <ul className="divide-y divide-border">
           {/* One row per area (in order of first, most severe appearance), so repeated areas read as a group */}
-          {[...new Set(memo.findings.map((f) => f.area))].map((area) => (
+          {[...new Set(findings.map((f) => f.area))].map((area) => (
             // The whole row opens the tab, but only the area name is the button, so screen readers hear a short name
             <li key={area} className="group relative flex items-start gap-3 px-5 py-2.5 transition-colors hover:bg-muted">
               <div className="min-w-0 flex-1 text-base leading-snug sm:flex sm:gap-3">
@@ -184,7 +197,7 @@ export function KeyFindings({ memo, loading, error, onRetry, onSection }: {
                   {AREA_LABEL[area] ?? area}<span className="sr-only"> (open tab)</span>
                 </button>
                 <ul className="min-w-0 flex-1 space-y-1">
-                  {memo.findings.filter((f) => f.area === area).map((f) => (
+                  {findings.filter((f) => f.area === area).map((f) => (
                     <li key={f.text} className="flex items-start gap-2">
                       <ToneIcon tone={SEVERITY_TONE[f.severity]} className="mt-0.5 size-4" />
                       <span>{f.text}</span>

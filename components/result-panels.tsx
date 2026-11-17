@@ -11,7 +11,7 @@ import { StatusBadge, ToneIcon, sentenceCase } from "@/components/status";
 import { CompanyMark, Flag, Name, regionName } from "@/components/visuals";
 import { ProductArt } from "@/components/product-art";
 import { RegistryLookup } from "@/components/registry-lookup";
-import { COMPONENT_RULE, componentLabel, entityTone, entityLabel, itemTone, NONE, REASON_MIN, SCREENING_RULE, routeStatus, toneVar } from "@/lib/format";
+import { COMPONENT_HINT, componentLabel, hsCode, entityTone, entityLabel, itemTone, NONE, REASON_MIN, SCREENING_RULE, routeStatus, toneVar } from "@/lib/format";
 import type { Classification, Entity, Match, Review, Route, Weights } from "@/lib/types";
 
 export function LegalPanel({ c }: { c: Classification }) {
@@ -21,7 +21,7 @@ export function LegalPanel({ c }: { c: Classification }) {
       <div className="flex items-start justify-between gap-3">
         <ProductArt hs={c.hs} size={64} />
         <div className="min-w-0 flex-1">
-          <div className="text-2xl font-bold">{c.hs.slice(0, 4)}.{c.hs.slice(4)}</div>
+          <div className="text-2xl font-bold">{hsCode(c.hs)}</div>
           {c.description && <p className="mt-1 text-sm leading-snug text-foreground">{c.description}</p>}
         </div>
         <StatusBadge tone={tone}>{c.chpl ? `Tier ${c.tier}` : c.status === "NOT LISTED" ? "Not on item list" : sentenceCase(c.status)}</StatusBadge>
@@ -452,7 +452,7 @@ export function ScoreBreakdown({ r, defaults, onWeights }: {
             <div className="mb-1 flex flex-wrap justify-between gap-3 text-sm">
               <span className={na ? "text-faint" : "text-muted-foreground"}>
                 {componentLabel[c.key] ?? c.key}
-                {COMPONENT_RULE[c.key] && <span className="block text-faint">{COMPONENT_RULE[c.key]}</span>}
+                {COMPONENT_HINT[c.key] && <span className="block text-faint">{COMPONENT_HINT[c.key]}</span>}
               </span>
               <span className="shrink-0 self-end">
                 {na ? <span className="text-faint">n/a</span> : <span className="text-foreground">{c.points!.toFixed(1)}</span>}

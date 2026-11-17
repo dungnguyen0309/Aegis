@@ -161,7 +161,7 @@ export function Network3D({ e, company, jurisdiction }: { e: Entity; company: st
     for (const ed of edges) {
       const a = byId.get(ed.a)!.pos, b = byId.get(ed.b)!.pos;
       const s = ed.score ?? 0;
-      const color = ed.kind === "match" ? (s >= 93 ? critical : s >= 80 ? serious : muted) : ed.kind === "listed" ? critical : muted;
+      const color = ed.kind === "match" ? (s >= 93 ? critical : s >= 80 ? serious : muted) : muted;
       const r = ed.kind === "match" ? 0.008 + (s / 100) * 0.016 : ed.kind === "screened" ? 0.004 : 0.008;
       const opacity = ed.kind === "screened" ? (theme === "dark" ? 0.3 : 0.35) : ed.kind === "listed" ? 0.45 : 0.9;
       g.add(rod(a, b, r, new THREE.MeshBasicMaterial({ color, transparent: true, opacity })));
@@ -250,7 +250,7 @@ export function Network3D({ e, company, jurisdiction }: { e: Entity; company: st
       <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
         <span className="inline-flex items-center gap-1.5"><span className="h-0.5 w-5" style={{ background: "var(--status-critical)" }} />Match from 93%</span>
         <span className="inline-flex items-center gap-1.5"><span className="h-0.5 w-5" style={{ background: "var(--status-serious)" }} />Possible match 80–93%</span>
-        <span className="inline-flex items-center gap-1.5"><span className="h-0.5 w-5" style={{ background: "var(--chart-baseline)" }} />Weak match, screening or owner link</span>
+        <span className="inline-flex items-center gap-1.5"><span className="h-0.5 w-5" style={{ background: "var(--chart-baseline)" }} />Weak match, list, screening or owner link</span>
         <span>Line thickness: similarity</span>
       </div>
     </div>

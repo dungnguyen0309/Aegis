@@ -28,6 +28,7 @@
   --color-warning: var(--status-warning);
   --color-serious: var(--status-serious);
   --color-critical: var(--status-critical);
+  --color-on-critical: var(--on-critical);
   --color-series-1: var(--series-1);
   --color-series-2: var(--series-2);
   --color-map-label: var(--map-label);
@@ -116,7 +117,6 @@
   --paper-info: #57534e;
   --stop-ink: #b42318;
   --edd-ink: #c2410c;
-  --ok-ink: #15803d;
 
   /* chart roles (validated on the white surface) */
   --series-1: #2a78d6;

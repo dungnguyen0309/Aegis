@@ -3,6 +3,9 @@ import type { Band, EntityStatus, Unit, VerdictCode } from "./types";
 /** Shown for a missing value in tables and stats. */
 export const NONE = "n/a";
 
+/** An HS code as the app shows it: 854231 becomes 8542.31. */
+export const hsCode = (hs: string) => (hs.length === 6 ? `${hs.slice(0, 4)}.${hs.slice(4)}` : hs);
+
 export function money(v: number, unit: Unit = "EUR", digits = 1): string {
   const sym = unit === "EUR" ? "€" : "$";
   const a = Math.abs(v);
@@ -56,16 +59,18 @@ export function itemTone(c: { chpl: boolean; status: string }): Tone {
   return c.status === "NOT LISTED" ? "good" : "warning";
 }
 
-/** A briefing finding's severity in the same tones (high = orange, like a listed item). */
+/** A briefing finding's severity in the same tones (high = orange, like a listed item). The API marks only a
+ *  sanctions match as critical, so red here is the Match status. */
 export const severityTone: Record<"critical" | "high" | "medium" | "info", Tone> = {
   critical: "critical", high: "serious", medium: "warning", info: "neutral",
 };
 
+/** A statistic never wears red (kept for Stop and Match): Critical shares the orange of High, told apart by its word. */
 export const bandTone: Record<Band, Tone> = {
   LOW: "good",
   MODERATE: "warning",
   HIGH: "serious",
-  CRITICAL: "critical",
+  CRITICAL: "serious",
 };
 
 export const entityTone: Record<EntityStatus, Tone> = {
@@ -96,13 +101,14 @@ export const realChapter = (hs: string) => Number(hs.slice(0, 2)) >= 1 && Number
 export const SCREENING_RULE = "Match from 93% similarity, possible match from 80%, review from 70%.";
 
 export const verdictTone: Record<VerdictCode, Tone> = {
-  // One scale, strongest first: solid red, solid orange (Hold, Red flag), yellow outline, grey, green
+  // One scale, strongest first: solid red, solid orange (Hold, Red flag: told apart by icon), yellow outline, grey.
+  // Standard is grey, not green: no action reads as a clearance
   STOP: "critical",
   HOLD: "serious",
   "RED FLAG": "serious",
   ELEVATED: "warning",
   "NAME ONLY": "neutral",
-  STANDARD: "good",
+  STANDARD: "neutral",
 };
 
 /** Decisions that block the shipment (Stop, Hold, Red flag: no shipping until checks are done) get a solid badge. */
@@ -125,7 +131,17 @@ export const componentLabel: Record<string, string> = {
   displacement: "Fall in direct exports to Russia",
 };
 
-/** How each route-risk component earns its points (shown under the breakdown and in the methodology). */
+/** What each route-risk component measures, in plain words, under the breakdown; the formulas are in COMPONENT_RULE. */
+export const COMPONENT_HINT: Record<string, string> = {
+  anomaly: "How far the most unusual year since 2022 is above the pre-war range.",
+  surge: "Yearly exports since 2022 against the pre-war average.",
+  materiality: "How much money the peak year adds above the pre-war level.",
+  criticality: "How high the item ranks on the EU battlefield item list.",
+  jurisdiction: "Customs union and border with Russia, and Russia-related designations there.",
+  displacement: "Direct exports to Russia falling while exports to the transit country rise.",
+};
+
+/** How each route-risk component earns its points (shown in the methodology). */
 export const COMPONENT_RULE: Record<string, string> = {
   anomaly: "Most unusual year since 2022; full points at 6 standard deviations above pre-war.",
   surge: "Average since 2022 vs the pre-war average; full points at 8 times.",

@@ -1,9 +1,10 @@
 "use client";
 
-import { CheckCircleIcon, InfoIcon, WarningIcon, WarningOctagonIcon } from "@phosphor-icons/react";
+import { CheckCircleIcon, FlagIcon, HourglassIcon, type Icon, InfoIcon, WarningIcon, WarningOctagonIcon } from "@phosphor-icons/react";
 import { Children, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import { type Tone, toneVar } from "@/lib/format";
+import { type Tone, toneVar, verdictSolid, verdictTone } from "@/lib/format";
+import type { VerdictCode } from "@/lib/types";
 
 const ICONS = {
   good: CheckCircleIcon,
@@ -27,11 +28,11 @@ export function sentenceCase(node: ReactNode): ReactNode {
 }
 
 /** Status is never colour alone: icon + label. Solid badges mark decisions that block a shipment. */
-export function StatusBadge({ tone, children, className, solid, large }: {
-  tone: Tone; children: ReactNode; className?: string; solid?: boolean; large?: boolean;
+export function StatusBadge({ tone, children, className, solid, large, icon }: {
+  tone: Tone; children: ReactNode; className?: string; solid?: boolean; large?: boolean; icon?: Icon;
 }) {
   const c = toneVar[tone];
-  const Icon = ICONS[tone];
+  const Glyph = icon ?? ICONS[tone];
   // White on the critical red is 4.8:1; the lighter serious orange needs dark ink (7.2:1)
   const ink = tone === "critical" ? "var(--on-critical)" : "var(--on-serious)";
   return (
@@ -48,9 +49,22 @@ export function StatusBadge({ tone, children, className, solid, large }: {
         background: `color-mix(in srgb, ${c} 12%, transparent)`,
       }}
     >
-      {solid ? <Icon weight="fill" aria-hidden className={cn("shrink-0", large ? "size-4.5" : "size-3.5")} />
-        : <ToneIcon tone={tone} className={large ? "size-4.5" : "size-3.5"} />}
+      <Glyph weight="fill" aria-hidden className={cn("shrink-0", large ? "size-4.5" : "size-3.5")} style={solid ? undefined : { color: c }} />
       {Children.map(children, sentenceCase)}
     </span>
+  );
+}
+
+/** Hold and Red flag share the orange: their own icons tell them apart without the word. */
+const VERDICT_ICON: Partial<Record<VerdictCode, Icon>> = { HOLD: HourglassIcon, "RED FLAG": FlagIcon };
+
+/** The action as a badge, the same everywhere: solid when it blocks the shipment. */
+export function VerdictBadge({ code, children, large, className }: {
+  code: VerdictCode; children?: ReactNode; large?: boolean; className?: string;
+}) {
+  return (
+    <StatusBadge tone={verdictTone[code]} solid={verdictSolid(code)} icon={VERDICT_ICON[code]} large={large} className={className}>
+      {children ?? code}
+    </StatusBadge>
   );
 }

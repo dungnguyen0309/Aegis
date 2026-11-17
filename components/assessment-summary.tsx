@@ -1,12 +1,12 @@
 "use client";
 
-import { CaretRightIcon, ChartLineIcon, FileTextIcon, MapTrifoldIcon, PackageIcon, PencilSimpleIcon, UserFocusIcon } from "@phosphor-icons/react";
+import { CaretRightIcon, ChartLineIcon, FileTextIcon, MapTrifoldIcon, PackageIcon, PencilSimpleIcon, UserFocusIcon, WarningOctagonIcon } from "@phosphor-icons/react";
 import { useEffect, useState, type KeyboardEvent, type ReactNode } from "react";
 import { CopyLink } from "@/components/copy-link";
 import { Button } from "@/components/ui/button";
-import { StatusBadge, ToneIcon } from "@/components/status";
+import { StatusBadge, ToneIcon, VerdictBadge } from "@/components/status";
 import { CompanyMark, Flag, Name, regionName, To } from "@/components/visuals";
-import { change, componentLabel, entityLabel, entityTone, itemTone, type Tone, toneVar, times, verdictSolid, verdictTone, routeStatus, ytdLabel, NONE } from "@/lib/format";
+import { change, componentLabel, hsCode, entityLabel, entityTone, itemTone, type Tone, toneVar, times, verdictTone, routeStatus, ytdLabel, NONE } from "@/lib/format";
 import type { Assessment } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { scrollMode } from "@/lib/use-reduced-motion";
@@ -61,6 +61,7 @@ export function AssessmentSummary({ a, onSection, example, keptBuyer, editing, o
 }) {
   const { query: q, classification: c, route: r, entity: e } = a;
   const tone = verdictTone[a.verdict.code];
+  const stop = a.verdict.code === "STOP";
   const best = e.subjects.flatMap((s) => s.matches).filter((m) => m.review?.decision !== "different")
     .sort((x, y) => y.score - x.score)[0];
   // A name hit is a lead until an officer confirms it on the Buyer tab
@@ -109,7 +110,7 @@ export function AssessmentSummary({ a, onSection, example, keptBuyer, editing, o
             </h1>
             <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-sm text-muted-foreground">
               {q.jurisdiction && <><Flag code={q.jurisdiction} size={14} /> {regionName(q.jurisdiction)} <span className="text-faint">·</span></>}
-              <span>HS {c.hs.slice(0, 4)}.{c.hs.slice(4)}{c.description && ` ${c.description}`}</span>
+              <span>HS {hsCode(c.hs)}{c.description && ` ${c.description}`}</span>
             </div>
             <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-sm text-muted-foreground">
               <Flag code={q.exporter} size={14} /> {q.exporter_name} <To />
@@ -134,16 +135,19 @@ export function AssessmentSummary({ a, onSection, example, keptBuyer, editing, o
       </div>
 
       <div className="px-5 pb-4 pt-4">
-        {/* The action sits in a box in its own colour (red for Stop, green for Standard): action, steps and notes read as one */}
-        <div className="border px-4 py-3.5 sm:px-5" style={{
-          borderColor: `color-mix(in srgb, ${toneVar[tone]} 60%, transparent)`,
+        {/* The action sits in a box in its own colour (grey for Standard): action, steps and notes read as one.
+            Stop alone gets a solid red header band and a heavier border */}
+        <div id="verdict-box" className={cn("border", stop && "border-2")} style={{
+          borderColor: stop ? toneVar.critical : `color-mix(in srgb, ${toneVar[tone]} 60%, transparent)`,
           background: `color-mix(in srgb, ${toneVar[tone]} 7%, var(--card))`,
         }}>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <div className={cn("flex flex-wrap items-center gap-x-3 gap-y-2 px-4 sm:px-5", stop ? "bg-critical py-3 text-on-critical" : "pt-3.5")}>
           <span className="sr-only">Action:</span>
-          <StatusBadge tone={tone} solid={verdictSolid(a.verdict.code)} large>{a.verdict.code}</StatusBadge>
-          <h2 className="min-w-0 wrap-break-word hyphens-auto text-xl font-bold leading-tight sm:text-3xl">{a.verdict.title}</h2>
+          {/* On the red band the badge keeps its shape with a white outline */}
+          <VerdictBadge code={a.verdict.code} large className={stop ? "border-on-critical!" : undefined} />
+          <h2 className="min-w-0 wrap-break-word hyphens-auto text-balance text-xl font-bold leading-tight sm:text-3xl">{a.verdict.title}</h2>
         </div>
+        <div className="px-4 pb-3.5 sm:px-5">
         {a.verdict.actions.length > 0 && (
           <ol id="verdict-steps" className="mt-3 list-decimal space-y-0.5 pl-5 text-base font-medium max-sm:text-sm">
             {a.verdict.actions.map((s, i) => <li key={s} className={cn(foldable(s, i) && collapsible && !allSteps && "max-sm:hidden")}>
@@ -168,6 +172,7 @@ export function AssessmentSummary({ a, onSection, example, keptBuyer, editing, o
           </button>
         </div>
         </div>
+        </div>
       </div>
 
       {/* Four across only from xl: beside the form column, lg tiles are too narrow for the status */}
@@ -188,7 +193,8 @@ export function AssessmentSummary({ a, onSection, example, keptBuyer, editing, o
         <Kpi label="Item" onClick={() => onSection("goods")} spoken={`${itemLabel}. Opens the Item tab`}
           value={<StatusBadge tone={itemTone(a.classification)}>{itemLabel}</StatusBadge>}
           sub={c.chpl ? "EU battlefield item list" : undefined} />
-        <Kpi label={`Exports to ${q.intermediary_name} vs pre-war`} onClick={() => onSection("route")}
+        {/* The word joiner keeps "pre-war" whole when the label wraps */}
+        <Kpi label={`Exports to ${q.intermediary_name} vs pre-\u2060war`} onClick={() => onSection("route")}
           spoken={`${exportsValue === NONE ? "not available" : exportsValue}. Opens the Route tab`}
           value={<>
             <span className="text-xl font-bold leading-none">{exportsValue}</span>
@@ -211,7 +217,7 @@ const SECTIONS: { id: Section; label: string; icon: typeof PackageIcon }[] = [
   { id: "briefing", label: "Briefing", icon: FileTextIcon },
 ];
 
-const DOT_WORD: Record<Tone, string> = { good: "clear", neutral: "info", warning: "check", serious: "check", critical: "alert" };
+const DOT_WORD: Record<Tone, string> = { good: "clear", neutral: "info", warning: "warning", serious: "high", critical: "stop" };
 
 /** Section switcher for the assessment, with a status icon where a section carries a finding. */
 export function SectionTabs({ value, onChange, a }: { value: Section; onChange: (s: Section) => void; a: Assessment }) {
@@ -220,6 +226,16 @@ export function SectionTabs({ value, onChange, a }: { value: Section; onChange: 
     goods: itemTone(a.classification),
     route: routeStatus(a.route.band, a.route.no_baseline).tone,
   };
+  // Stop stays in sight: a strip under the sticky tabs once the verdict box has scrolled away above
+  const stop = a.verdict.code === "STOP";
+  const [away, setAway] = useState(false);
+  useEffect(() => {
+    const box = stop ? document.getElementById("verdict-box") : null;
+    if (!box) return;
+    const io = new IntersectionObserver(([en]) => setAway(!en.isIntersecting && en.boundingClientRect.top < 0));
+    io.observe(box);
+    return () => io.disconnect();
+  }, [stop, a.generated_at]);
   const onKey = (e: KeyboardEvent<HTMLDivElement>) => {
     const i = SECTIONS.findIndex((x) => x.id === value);
     const next = ({ ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: SECTIONS.length - 1 } as Record<string, number>)[e.key];
@@ -246,6 +262,13 @@ export function SectionTabs({ value, onChange, a }: { value: Section; onChange: 
           </button>
         ))}
       </div>
+      {/* Absolute, so the strip appearing never shifts the content under the tabs */}
+      {stop && away && (
+        <div className="absolute inset-x-1 top-full flex min-w-0 items-center gap-2 bg-critical px-3 py-1.5 text-sm text-on-critical">
+          <WarningOctagonIcon weight="fill" className="size-4 shrink-0" aria-hidden />
+          <b>Stop</b> <span className="min-w-0 truncate font-medium">{a.verdict.title}</span>
+        </div>
+      )}
     </div>
   );
 }

@@ -384,7 +384,8 @@ async def build(ctx: dict) -> dict:
         "marking": "For compliance use · Not legal advice",
         "subject": subject,
         "verdict": v,
-        "bluf": f"{v['code']}: {v['title']}." + (" " + " ".join(v["notes"]) if v["notes"] else ""),
+        # Sentence case like the app's badges: "Red flag: ...", not the API code "RED FLAG"
+        "bluf": f"{v['code'].capitalize()}: {v['title']}." + (" " + " ".join(v["notes"]) if v["notes"] else ""),
         "scores": {"route": ctx["route"]["score"], "route_band": ctx["route"]["band"],
                    "route_no_baseline": bool(ctx["route"].get("no_baseline")),
                    "entity": ctx["entity"]["score"], "entity_status": ctx["entity"]["status"],

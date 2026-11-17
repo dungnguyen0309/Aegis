@@ -105,7 +105,7 @@ export function CompanyMark({ name, size = 32, flagged = false, className, x, y 
         style={{ fontFamily: "var(--font-sans)" }}>
         {text}
       </text>
-      {flagged && <circle cx="20" cy="20" r="19" fill="none" stroke="var(--status-critical)" strokeWidth={2.5} />}
+      {flagged && <circle cx="20" cy="20" r="19" fill="none" stroke="var(--status-serious)" strokeWidth={2.5} />}
     </svg>
   );
 }

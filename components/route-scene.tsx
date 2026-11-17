@@ -3,7 +3,7 @@
 import { lazy3D, VIEW_H } from "@/components/three/lazy";
 import { StatusBadge, sentenceCase } from "@/components/status";
 import { CompanyMark, Flag, regionName } from "@/components/visuals";
-import { entityTone, money, entityLabel, routeStatus } from "@/lib/format";
+import { entityTone, hsCode, money, entityLabel, routeStatus } from "@/lib/format";
 import { CONTAINER } from "@/lib/palette";
 import { MODE_LABEL, ROUTE_MODES, type Mode } from "@/lib/routes";
 import type { Assessment } from "@/lib/types";
@@ -215,7 +215,7 @@ function Leg({ id, d, mode, alert }: { id: string; d: string; mode: Mode; alert:
         </>
       )}
       {mode === "air" && <path d={d} fill="none" stroke={mix("--scene-steel", 45)} strokeWidth={1.6} strokeDasharray="2 7" strokeLinecap="round" />}
-      <path id={id} d={d} fill="none" stroke={alert ? "var(--status-critical)" : "none"} strokeWidth={2}
+      <path id={id} d={d} fill="none" stroke={alert ? "var(--status-serious)" : "none"} strokeWidth={2}
         strokeDasharray="7 6" opacity={0.9} />
     </g>
   );
@@ -271,7 +271,8 @@ export function RouteScene({ a, view, playing }: { a: Assessment; view: "3d" | "
         <Leg id="leg1" d={leg1} mode={modes.first} alert={false} />
         <Leg id="leg2" d={leg2} mode={modes.onward} alert={alert} />
         <Factory cx={NODES.exporter} cy={GROUND} code={q.exporter} />
-        <BuyerCompound cx={NODES.buyer} cy={GROUND} code={buyerCountry} name={q.company} flagged={flagged} />
+        {/* The middle node is the transit country; the buyer's own country is named in the caption below */}
+        <BuyerCompound cx={NODES.buyer} cy={GROUND} code={q.intermediary} name={q.company} flagged={flagged} />
         <Depot cx={NODES.russia} cy={GROUND} code="RU" />
         <Moving path="leg1" dur={9} begin={0} still={mid(NODES.exporter + 95, NODES.buyer - 95, modes.first)}
           tilt={modes.first === "air"} playing={playing}>
@@ -289,8 +290,8 @@ export function RouteScene({ a, view, playing }: { a: Assessment; view: "3d" | "
         </g>
         {alert && (
           <g transform={`translate(${(NODES.buyer + NODES.russia) / 2}, ${modes.onward === "air" ? GROUND - 92 : GROUND - 30})`}>
-            <circle r={11} fill="var(--status-critical)" />
-            <text y={4.5} textAnchor="middle" fontSize={15} fontWeight={700} fill="var(--on-critical)">?</text>
+            <circle r={11} fill="var(--status-serious)" />
+            <text y={4.5} textAnchor="middle" fontSize={15} fontWeight={700} fill="var(--on-serious)">?</text>
           </g>
         )}
       </svg>
@@ -298,7 +299,7 @@ export function RouteScene({ a, view, playing }: { a: Assessment; view: "3d" | "
       <div className="mt-1 grid grid-cols-3 gap-3 text-center text-sm leading-snug">
         <div className="flex flex-col items-center gap-1">
           <div className="flex items-center gap-1.5 font-bold"><Flag code={q.exporter} /> {q.exporter_name}</div>
-          <div className="text-muted-foreground">Exporter · HS {a.classification.hs}</div>
+          <div className="text-muted-foreground">Exporter · HS {hsCode(a.classification.hs)}</div>
           {last && <div>{money(last.value, series.unit)} in {last.year}
             {route.multiplier !== null && <span className="text-muted-foreground"> · Exports vs pre-war: {route.multiplier.toFixed(1)}×</span>}</div>}
         </div>

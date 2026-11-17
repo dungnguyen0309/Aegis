@@ -6,7 +6,7 @@ import { flagTexture, markTexture } from "@/components/three/marks";
 import { Frame3D, type Tip, tipAt, usePicking, useStage } from "@/components/three/frame";
 import { VIEW_H } from "@/components/three/lazy";
 import { regionName } from "@/components/visuals";
-import { money, entityLabel, routeStatus } from "@/lib/format";
+import { hsCode, money, entityLabel, routeStatus } from "@/lib/format";
 import { CONTAINER } from "@/lib/palette";
 import { MODE_LABEL, ROUTE_MODES, type Mode } from "@/lib/routes";
 import { useTheme } from "@/lib/theme";
@@ -125,7 +125,7 @@ function compound(g: THREE.Group, company: string, flagged: boolean, beacon: THR
   g.add(sign);
   g.add(cyl(0.01, 0.12, std("var(--scene-steel)"), -0.3, 1.38, -0.2, 6));
   if (flagged) {
-    const light = new THREE.Mesh(new THREE.SphereGeometry(0.05, 16, 12), new THREE.MeshBasicMaterial({ color: cssVar("--status-critical"), transparent: true }));
+    const light = new THREE.Mesh(new THREE.SphereGeometry(0.05, 16, 12), new THREE.MeshBasicMaterial({ color: cssVar("--status-serious"), transparent: true }));
     light.position.set(-0.05, 1.42, -0.2);
     light.userData.dynamic = true;
     beacon.push(light);
@@ -281,11 +281,11 @@ function warningSprite(): THREE.Sprite {
   const c = document.createElement("canvas");
   c.width = c.height = 128;
   const ctx = c.getContext("2d")!;
-  ctx.fillStyle = cssVar("--status-critical");
+  ctx.fillStyle = cssVar("--status-serious");
   ctx.beginPath();
   ctx.arc(64, 64, 58, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = cssVar("--on-critical");
+  ctx.fillStyle = cssVar("--on-serious");
   ctx.font = `700 84px ${pageFont()}`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
@@ -359,12 +359,13 @@ export function Diorama3D({ a, playing }: { a: Assessment; playing: boolean }) {
     depot(ru);
     const cloths = [
       flagPole(exp, q.exporter, [-0.72, 0.72], invalidate, () => alive),
-      flagPole(buy, buyerCountry, [-0.72, 0.72], invalidate, () => alive),
+      // The middle flag is the transit country; the buyer's own country is in its label
+      flagPole(buy, q.intermediary, [-0.72, 0.72], invalidate, () => alive),
       flagPole(ru, "RU", [-0.72, 0.72], invalidate, () => alive),
     ];
     const unit = series.unit;
     pick(exp, { title: <>{q.exporter_name} · exporter</>, lines: [
-      `HS ${a.classification.hs}${a.classification.description ? ` · ${a.classification.description}` : ""}`,
+      `HS ${hsCode(a.classification.hs)}${a.classification.description ? ` · ${a.classification.description}` : ""}`,
       last ? `${money(last.value, unit)} to ${q.intermediary_name} in ${last.year}` : "",
       route.multiplier !== null ? `Exports vs pre-war: ${route.multiplier.toFixed(1)}×` : "",
     ] });
@@ -395,7 +396,7 @@ export function Diorama3D({ a, playing }: { a: Assessment; playing: boolean }) {
       if (mode === "air") dashes(g, curve, cssVar("--chart-baseline"));
       if (suspicious) {
         dashes(g, mode === "air" ? curve : new THREE.LineCurve3(new THREE.Vector3(x1, 0.045, 0.62), new THREE.Vector3(x2, 0.045, 0.62)),
-          cssVar("--status-critical"), mode === "air" ? 0.06 : 0);
+          cssVar("--status-serious"), mode === "air" ? 0.06 : 0);
         const w = warningSprite();
         w.position.set((x1 + x2) / 2, mode === "air" ? 2.0 : 0.75, 0.3);
         pick(w, { title: <>Suspected onward route</>, lines: [`Route risk ${route.band}: exports to ${q.intermediary_name} surged while direct exports to Russia fell.`] });
